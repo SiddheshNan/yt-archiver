@@ -1,0 +1,27 @@
+database:
+  name: yt_archiver_dev
+  url: mongodb://host.docker.internal:27017
+downloads:
+  max_concurrent: 2
+  max_retries: 3
+  timeout: 3600
+logging:
+  format: console
+  level: DEBUG
+  log_dir: runtime/logs
+  log_file: app.log
+server:
+  cors_origins:
+  - http://localhost:3000
+  - http://localhost:5173
+  - http://localhost:3100
+  frontend_build_dir: runtime/frontend-build
+  host: 0.0.0.0
+  port: 8000
+  reload: true
+  serve_frontend: true
+storage:
+  videos_dir: runtime/videos
+tools:
+  ffmpeg_path: ffmpeg
+  ytdlp_path: yt-dlp

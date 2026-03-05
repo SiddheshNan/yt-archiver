@@ -1,0 +1,16 @@
+node_modules
+docker-compose.yml
+logs
+config
+.env
+*.log
+.venv
+runs
+_data
+application_build
+scripts
+tmp
+
+
+__pycache__/
+runtime

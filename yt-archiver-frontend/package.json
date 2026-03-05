@@ -1,0 +1,40 @@
+{
+  "name": "yt-archiver-frontend",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --force --port 3100",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.13.3",
+    "@emotion/styled": "^11.13.0",
+    "@iconify/react": "^5.0.2",
+    "@mui/icons-material": "^5.16.7",
+    "@mui/material": "^5.16.7",
+    "axios": "^1.9.0",
+    "dayjs": "^1.11.10",
+    "eslint-config-react-app": "^7.0.1",
+    "jwt-decode": "^4.0.0",
+    "lodash": "^4.17.21",
+    "plyr": "^3.8.4",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "react-router-dom": "^6.26.1",
+    "react-toastify": "^10.0.4",
+    "simplebar-react": "^3.2.6",
+    "sweetalert2": "^11.10.1"
+  },
+  "eslintConfig": {
+    "extends": "react-app"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "4.1.0",
+    "prettier": "^3.3.3",
+    "vite": "4.5.0",
+    "vite-plugin-node-polyfills": "^0.16.0",
+    "vite-raw-plugin": "^1.0.2"
+  }
+}

@@ -1,0 +1,13 @@
+MuiDrawer-root {
+  z-index: 1300;
+}
+
+.swal2-container {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.input-text-wrapper-small {
+  width: 30%;
+  margin-bottom: 10em;
+  display: inline-block;
+}
