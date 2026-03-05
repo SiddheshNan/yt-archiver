@@ -3,6 +3,9 @@ import { useParams, useNavigate } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
+import ThumbUpOutlinedIcon from "@mui/icons-material/ThumbUpOutlined";
+import ThumbDownOutlinedIcon from "@mui/icons-material/ThumbDownOutlined";
+import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
 import { Icon } from "@iconify/react";
 import VideoPlayer from "@/components/VideoPlayer";
 import ChannelAvatar from "@/components/ChannelAvatar";
@@ -143,33 +146,123 @@ export default function WatchPage() {
             {video.title}
           </Typography>
 
-          {/* Channel row — like YouTube */}
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}>
-            <ChannelAvatar
-              channelId={video.channel_id}
-              channelName={video.channel_name}
-              size={40}
-              onClick={() => video.channel_id && navigate(`/channel/${video.channel_id}`)}
-            />
-            <Box>
-              <Typography
-                variant="subtitle2"
-                sx={{
-                  color: "#f1f1f1",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  lineHeight: 1.3,
-                  "&:hover": { color: "#fff" },
-                }}
+          {/* Actions Row */}
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: { xs: "flex-start", sm: "center" },
+              justifyContent: "space-between",
+              flexDirection: { xs: "column", sm: "row" },
+              gap: 2,
+              mb: 2,
+            }}
+          >
+            {/* Channel Info */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+              <ChannelAvatar
+                channelId={video.channel_id}
+                channelName={video.channel_name}
+                size={40}
                 onClick={() => video.channel_id && navigate(`/channel/${video.channel_id}`)}
-              >
-                {video.channel_name}
-              </Typography>
-              {channel && (
-                <Typography variant="caption" sx={{ color: "#AAAAAA", lineHeight: 1.3 }}>
-                  {channel.video_count} video{channel.video_count !== 1 ? "s" : ""} archived
+              />
+              <Box>
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    color: "#f1f1f1",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    lineHeight: 1.3,
+                    "&:hover": { color: "#fff" },
+                  }}
+                  onClick={() => video.channel_id && navigate(`/channel/${video.channel_id}`)}
+                >
+                  {video.channel_name}
                 </Typography>
+                {channel && (
+                  <Typography variant="caption" sx={{ color: "#AAAAAA", lineHeight: 1.3 }}>
+                    {channel.video_count} video{channel.video_count !== 1 ? "s" : ""} archived
+                  </Typography>
+                )}
+              </Box>
+            </Box>
+
+            {/* Action Pills */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}>
+              {/* Like / Dislike Pill */}
+              {(video.like_count != null || video.dislike_count != null) && (
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    bgcolor: "rgba(255, 255, 255, 0.1)",
+                    borderRadius: 10,
+                    "&:hover": { bgcolor: "rgba(255, 255, 255, 0.2)" },
+                    transition: "background-color 0.2s",
+                  }}
+                >
+                  {/* Like Button */}
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      px: 2,
+                      py: 0.75,
+                      borderRight: video.dislike_count != null ? "1px solid rgba(255, 255, 255, 0.2)" : "none",
+                    }}
+                  >
+                    <ThumbUpOutlinedIcon fontSize="small" sx={{ color: "#f1f1f1" }} />
+                    <Typography variant="body2" sx={{ color: "#f1f1f1", fontWeight: 600 }}>
+                      {video.like_count != null ? formatViews(video.like_count, false) : "Like"}
+                    </Typography>
+                  </Box>
+
+                  {/* Dislike Button */}
+                  {video.dislike_count != null && (
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        px: 2,
+                        py: 0.75,
+                      }}
+                    >
+                      <ThumbDownOutlinedIcon fontSize="small" sx={{ color: "#f1f1f1" }} />
+                      <Typography variant="body2" sx={{ color: "#f1f1f1", fontWeight: 600 }}>
+                        {formatViews(video.dislike_count, false)}
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
               )}
+
+              {/* Download Pill */}
+              <Box
+                component="a"
+                href={videoApi.getStreamUrl(video.id)}
+                download={`${video.title}.mp4`}
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  px: 2,
+                  py: 0.75,
+                  bgcolor: "rgba(255, 255, 255, 0.1)",
+                  borderRadius: 10,
+                  textDecoration: "none",
+                  "&:hover": { bgcolor: "rgba(255, 255, 255, 0.2)" },
+                  transition: "background-color 0.2s",
+                }}
+              >
+                <DownloadOutlinedIcon fontSize="small" sx={{ color: "#f1f1f1" }} />
+                <Typography variant="body2" sx={{ color: "#f1f1f1", fontWeight: 600 }}>
+                  Download {video.file_size && `(${formatFileSize(video.file_size)})`}
+                </Typography>
+              </Box>
             </Box>
           </Box>
 
@@ -189,7 +282,7 @@ export default function WatchPage() {
               {video.view_count != null ? `${formatViews(video.view_count)} • ` : ""}
               {timeAgo(video.upload_date || video.created_at)}
               {/* dont show this duration but keep commented {video.duration > 0 && ` • ${formatDuration(video.duration)}`} */}
-              {video.file_size && ` • ${formatFileSize(video.file_size)}`}
+              {/* {video.file_size && ` • ${formatFileSize(video.file_size)}`} */}
             </Typography>
 
             <Typography

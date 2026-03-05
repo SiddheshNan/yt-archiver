@@ -55,10 +55,10 @@ export function formatFileSize(bytes) {
 /**
  * Format view count like YouTube (e.g. "1.2M views", "340K views")
  */
-export function formatViews(count) {
+export function formatViews(count, showViews = true) {
   if (count == null) return "";
-  if (count >= 1_000_000_000) return `${(count / 1_000_000_000).toFixed(1)}B views`;
-  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M views`;
-  if (count >= 1_000) return `${(count / 1_000).toFixed(1)}K views`;
-  return `${count} views`;
+  if (count >= 1_000_000_000) return `${(count / 1_000_000_000).toFixed(1)}B ${showViews ? "views" : ""}`;
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M ${showViews ? "views" : ""}`;
+  if (count >= 1_000) return `${(count / 1_000).toFixed(1)}K ${showViews ? "views" : ""}`;
+  return `${count} ${showViews ? "views" : ""}`;
 }

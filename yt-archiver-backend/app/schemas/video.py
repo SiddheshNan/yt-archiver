@@ -43,6 +43,8 @@ class VideoResponse(BaseModel):
     thumbnail_path: str | None
     upload_date: str | None
     view_count: int | None
+    like_count: int | None
+    dislike_count: int | None
     tags: list[str] = Field(default_factory=list)
     categories: list[str] = Field(default_factory=list)
     file_path: str | None
@@ -69,6 +71,8 @@ class VideoSummaryResponse(BaseModel):
     thumbnail_path: str | None
     upload_date: str | None
     view_count: int | None
+    like_count: int | None
+    dislike_count: int | None
     tags: list[str] = Field(default_factory=list)
     categories: list[str] = Field(default_factory=list)
     status: str

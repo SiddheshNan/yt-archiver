@@ -32,6 +32,8 @@ def new_video_document(
     thumbnail_url: str,
     upload_date: datetime | None = None,
     view_count: int | None = None,
+    like_count: int | None = None,
+    dislike_count: int | None = None,
     tags: list[str] | None = None,
     categories: list[str] | None = None,
 ) -> dict[str, Any]:
@@ -48,6 +50,8 @@ def new_video_document(
         thumbnail_url: URL of the video thumbnail.
         upload_date: Original upload date on YouTube.
         view_count: YouTube view count at time of download (reference only).
+        like_count: YouTube like count.
+        dislike_count: YouTube dislike count (via Return YouTube Dislike API).
 
     Returns:
         Dict suitable for MongoDB insert_one().
@@ -64,6 +68,8 @@ def new_video_document(
         "thumbnail_url": thumbnail_url,
         "upload_date": upload_date,
         "view_count": view_count,
+        "like_count": like_count,
+        "dislike_count": dislike_count,
         "tags": tags or [],
         "categories": categories or [],
         "file_path": None,
@@ -102,6 +108,8 @@ def serialize_video(doc: dict[str, Any]) -> dict[str, Any]:
         "thumbnail_url": doc.get("thumbnail_url", ""),
         "upload_date": _fmt_dt(doc.get("upload_date")),
         "view_count": doc.get("view_count"),
+        "like_count": doc.get("like_count"),
+        "dislike_count": doc.get("dislike_count"),
         "tags": doc.get("tags", []),
         "categories": doc.get("categories", []),
         "file_path": doc.get("file_path"),

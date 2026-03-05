@@ -84,6 +84,15 @@ export default function VideoPlayer({ src, poster }) {
         "& .plyr": {
           borderRadius: { xs: 0, lg: "12px" },
           overflow: "hidden",
+          maxHeight: "80vh",
+        },
+        "& .plyr__video-wrapper": {
+          maxHeight: "80vh",
+          bgcolor: "#000",
+        },
+        "& video": {
+          maxHeight: "80vh",
+          objectFit: "contain",
         },
         "& .plyr__control--overlaid": {
           bgcolor: "rgba(0,110,255,0.85)",

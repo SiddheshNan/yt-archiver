@@ -10,11 +10,14 @@ This is the primary business logic layer. It coordinates between:
 
 from __future__ import annotations
 
+import asyncio
 import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+import requests
 
 from bson import ObjectId
 
@@ -110,6 +113,9 @@ class VideoService:
         # Parse upload date
         upload_date = self._parse_upload_date(metadata.get("upload_date"))
 
+        # Fetch dislike count asynchronously
+        dislikes = await self._fetch_dislikes(video_id)
+
         # Create video record
         doc = new_video_document(
             video_id=video_id,
@@ -123,6 +129,8 @@ class VideoService:
             thumbnail_url=metadata.get("thumbnail", ""),
             upload_date=upload_date,
             view_count=metadata.get("view_count"),
+            like_count=metadata.get("like_count"),
+            dislike_count=dislikes,
             tags=metadata.get("tags", []),
             categories=metadata.get("categories", []),
         )
@@ -531,3 +539,24 @@ class VideoService:
             return datetime.strptime(date_str, "%Y%m%d").replace(tzinfo=timezone.utc)
         except ValueError:
             return None
+
+    @staticmethod
+    async def _fetch_dislikes(video_id: str) -> int | None:
+        """Safe non-blocking wrapper to fetch dislike count from Return YouTube Dislike API."""
+        def _get() -> int | None:
+            try:
+                # 5 second timeout so we never block downloads if the third-party API is down.
+                resp = requests.get(
+                    f"https://returnyoutubedislikeapi.com/votes?videoId={video_id}",
+                    timeout=5,
+                    headers={"User-Agent": "Mozilla/5.0 yt-archiver"}
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    return data.get("dislikes")
+            except Exception as e:
+                logger.warning("ryd_api_error",
+                               video_id=video_id, error=str(e))
+            return None
+
+        return await asyncio.to_thread(_get)
