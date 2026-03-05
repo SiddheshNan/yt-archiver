@@ -316,9 +316,10 @@ export default function WatchPage() {
             {/* Metadata line */}
             <Typography variant="body2" sx={{ color: "#f1f1f1", fontWeight: 600, mb: 1, fontSize: "0.85rem" }}>
               {video.view_count != null ? `${formatViews(video.view_count)} • ` : ""}
-              {timeAgo(video.upload_date || video.created_at)}
+              {video.upload_date ? `Published ${timeAgo(video.upload_date)} • ` : ""}
               {/* dont show this duration but keep commented {video.duration > 0 && ` • ${formatDuration(video.duration)}`} */}
               {/* {video.file_size && ` • ${formatFileSize(video.file_size)}`} */}
+              {video.created_at ? `Archived ${timeAgo(video.created_at)}` : ""}
             </Typography>
 
             <Typography

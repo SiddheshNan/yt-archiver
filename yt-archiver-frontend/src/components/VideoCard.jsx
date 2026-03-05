@@ -145,7 +145,7 @@ export default function VideoCard({ video }) {
           </Typography>
           <Typography variant="caption" sx={{ color: "#AAAAAA", fontSize: "0.78rem" }}>
             {video.view_count != null ? `${formatViews(video.view_count)} • ` : ""}
-            {timeAgo(video.upload_date || video.created_at)}
+            {timeAgo(video.upload_date)}
           </Typography>
         </Box>
       </Box>

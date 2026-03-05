@@ -19,7 +19,12 @@ export function formatDuration(seconds) {
  */
 export function timeAgo(dateString) {
   if (!dateString) return "";
-  const date = new Date(dateString);
+  // Ensure UTC timestamps from backend are parsed as UTC
+  let ds = dateString;
+  if (typeof ds === "string" && !ds.endsWith("Z") && !ds.includes("+") && !ds.includes("-", 10)) {
+    ds = ds + "Z";
+  }
+  const date = new Date(ds);
   const now = new Date();
   const diffMs = now - date;
   const diffSecs = Math.floor(diffMs / 1000);
