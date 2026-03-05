@@ -50,7 +50,7 @@ def setup_logging(config: LoggingConfig) -> None:
     file_handler = logging.handlers.RotatingFileHandler(
         filename=str(config.get_log_file_path()),
         maxBytes=10 * 1024 * 1024,
-        backupCount=5,
+        backupCount=365,
         encoding="utf-8",
     )
     file_handler.setLevel(log_level)

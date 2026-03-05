@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Helmet } from "react-helmet-async";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import TextField from "@mui/material/TextField";
@@ -101,6 +102,10 @@ export default function AddVideoPage() {
 
   return (
     <Box sx={{ maxWidth: 700, mx: "auto", px: 3, py: 5 }}>
+      <Helmet>
+        <title>Add Videos - YouTube Archiver</title>
+        <meta name="description" content="Add YouTube videos, channels, or playlists to your archive" />
+      </Helmet>
       {/* Header with queue button */}
       <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", mb: 5 }}>
         <Box>

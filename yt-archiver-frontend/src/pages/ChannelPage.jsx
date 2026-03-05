@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
@@ -69,6 +70,10 @@ export default function ChannelPage() {
 
   return (
     <Box>
+      <Helmet>
+        <title>{channel.name} - YouTube Archiver</title>
+        <meta name="description" content={`Archived videos from ${channel.name}`} />
+      </Helmet>
       {/* Channel Header */}
       <Box
         sx={{

@@ -42,6 +42,7 @@ from app.schemas.video import (
 )
 from app.services.download_manager import DownloadJob, DownloadManager
 from app.services.ytdlp_service import YtDlpService, extract_video_id_from_url
+from app.utils.url_sanitizer import clean_video_url, clean_channel_url, clean_playlist_url
 
 logger = get_logger(__name__)
 
@@ -95,6 +96,10 @@ class VideoService:
             DuplicateError: If video already exists.
             ValidationError: If URL is invalid.
         """
+        # Sanitize the URL: strip playlist/index params, normalize shorts, etc.
+        url = clean_video_url(url)
+        logger.info("add_video_sanitized", url=url)
+
         # Extract metadata
         metadata = await self._ytdlp.extract_metadata(url)
         video_id = metadata.get("id")
@@ -185,7 +190,7 @@ class VideoService:
 
         return BatchAddVideosResponse(queued=queued, errors=errors)
 
-    async def archive_channel(self, channel_url: str) -> BatchAddVideosResponse:
+    async def archive_channel(self, channel_url: str, url_type: str = "channel") -> BatchAddVideosResponse:
         """Archive all videos from a channel or playlist URL.
 
         Flow:
@@ -194,10 +199,19 @@ class VideoService:
 
         Args:
             channel_url: YouTube channel or playlist URL.
+            url_type: Either "channel" or "playlist".
 
         Returns:
             BatchAddVideosResponse with queued jobs and errors.
         """
+        # Clean URL based on explicit type
+        if url_type == "playlist":
+            channel_url = clean_playlist_url(channel_url)
+        else:
+            channel_url = clean_channel_url(channel_url)
+        logger.info("archive_channel_sanitized",
+                    url=channel_url, url_type=url_type)
+
         entries = await self._ytdlp.extract_playlist_video_urls(channel_url)
         logger.info("channel_archive_entries",
                     count=len(entries), url=channel_url)

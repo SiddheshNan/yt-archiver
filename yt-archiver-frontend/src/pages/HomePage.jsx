@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Helmet } from "react-helmet-async";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
@@ -41,6 +42,10 @@ export default function HomePage() {
 
   return (
     <Box sx={{ px: { xs: 2, sm: 3, md: 4 }, py: 3 }}>
+      <Helmet>
+        <title>YouTube Archiver</title>
+        <meta name="description" content="Browse your archived YouTube videos" />
+      </Helmet>
       {loading && videos.length === 0 ? (
         <Box sx={{ display: "flex", justifyContent: "center", py: 10 }}>
           <CircularProgress sx={{ color: "#fff" }} />

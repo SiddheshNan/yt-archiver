@@ -6,6 +6,10 @@ server:
     - "http://localhost:3000"
     - "http://localhost:5173"
     - "http://localhost:3100"
+    - "https://www.youtube.com"
+    - "https://m.youtube.com"
+    - "https://music.youtube.com"
+    - "https://music.youtube.com"
   serve_frontend: true
   frontend_build_dir: "runtime/frontend-build"
 

@@ -1,8 +1,3 @@
-export const CONFIG = {
-  appName: "YouTube Archiver",
-  appVersion: "0.1.0",
-};
-
 const API_URL_DEV = "http://localhost:8000";
 const API_URL_PROD = "";
 

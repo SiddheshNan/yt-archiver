@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
@@ -59,6 +60,10 @@ export default function SearchPage() {
 
   return (
     <Box sx={{ maxWidth: 1050, mx: "auto", px: { xs: 2, sm: 3 }, py: 2.5 }}>
+      <Helmet>
+        <title>{query ? `${query} - Search` : "Search"} - YouTube Archiver</title>
+        <meta name="description" content={`Search results for "${query}" in your video archive`} />
+      </Helmet>
       {loading && results.length === 0 ? (
         <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
           <CircularProgress sx={{ color: "#fff" }} />

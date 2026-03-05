@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
 import ThumbUpOutlinedIcon from "@mui/icons-material/ThumbUpOutlined";
 import ThumbDownOutlinedIcon from "@mui/icons-material/ThumbDownOutlined";
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
+import DeleteOutlinedIcon from "@mui/icons-material/DeleteOutlined";
 import { Icon } from "@iconify/react";
 import VideoPlayer from "@/components/VideoPlayer";
 import ChannelAvatar from "@/components/ChannelAvatar";
@@ -81,6 +83,10 @@ export default function WatchPage() {
         mx: "auto",
       }}
     >
+      <Helmet>
+        <title>{video.title} - YouTube Archiver</title>
+        <meta name="description" content={video.description ? video.description.slice(0, 160) : video.title} />
+      </Helmet>
       {/* ── Main Column ── */}
       <Box sx={{ flex: 1, minWidth: 0 }}>
         {/* Video Player */}
@@ -261,6 +267,36 @@ export default function WatchPage() {
                 <DownloadOutlinedIcon fontSize="small" sx={{ color: "#f1f1f1" }} />
                 <Typography variant="body2" sx={{ color: "#f1f1f1", fontWeight: 600 }}>
                   Download {video.file_size && `(${formatFileSize(video.file_size)})`}
+                </Typography>
+              </Box>
+
+              {/* Remove Pill */}
+              <Box
+                onClick={async () => {
+                  if (!window.confirm("Remove this video from archive? This will delete the file from disk.")) return;
+                  try {
+                    await videoApi.delete(video.id);
+                    navigate("/");
+                  } catch (err) {
+                    alert("Failed to remove video.");
+                  }
+                }}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  px: 2,
+                  py: 0.75,
+                  bgcolor: "rgba(255, 255, 255, 0.1)",
+                  borderRadius: 10,
+                  cursor: "pointer",
+                  "&:hover": { bgcolor: "rgba(255, 77, 77, 0.25)" },
+                  transition: "background-color 0.2s",
+                }}
+              >
+                <DeleteOutlinedIcon fontSize="small" sx={{ color: "#f1f1f1" }} />
+                <Typography variant="body2" sx={{ color: "#f1f1f1", fontWeight: 600 }}>
+                  Remove
                 </Typography>
               </Box>
             </Box>

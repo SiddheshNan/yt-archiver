@@ -1,0 +1,45 @@
+/* ── YT Archiver: Archive button on YouTube ── */
+
+.yta-archive-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 16px;
+    height: 36px;
+    border: none;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #f1f1f1;
+    font-family: "Roboto", "Arial", sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-left: 8px;
+    white-space: nowrap;
+}
+
+.yta-archive-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.yta-archive-btn.yta-sending {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.yta-archive-btn.yta-done {
+    background: #2e7d32;
+    color: #fff;
+}
+
+.yta-archive-btn.yta-error {
+    background: #c62828;
+    color: #fff;
+}
+
+.yta-archive-btn svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+}

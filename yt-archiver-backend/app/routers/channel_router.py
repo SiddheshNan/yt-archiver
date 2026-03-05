@@ -104,7 +104,7 @@ async def archive_channel(
     request: ArchiveChannelRequest,
     service: VideoService = Depends(_get_video_service),
 ) -> BatchAddVideosResponse:
-    return await service.archive_channel(request.url)
+    return await service.archive_channel(request.url, url_type="channel")
 
 
 @router.get(

@@ -107,7 +107,7 @@ async def add_playlist(
     request: AddPlaylistRequest,
     service: VideoService = Depends(_get_video_service),
 ) -> BatchAddVideosResponse:
-    return await service.archive_channel(request.url)
+    return await service.archive_channel(request.url, url_type="playlist")
 
 
 @router.get(
