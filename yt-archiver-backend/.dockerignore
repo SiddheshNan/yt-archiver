@@ -11,6 +11,5 @@ application_build
 scripts
 tmp
 
-
 __pycache__/
 runtime

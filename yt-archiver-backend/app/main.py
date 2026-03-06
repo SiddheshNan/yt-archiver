@@ -23,7 +23,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.config import AppSettings, init_settings, get_settings, parse_args
+from app.config import AppSettings, init_settings, get_settings, parse_args, ensure_config
 from app.database import init_database, shutdown_database, get_database
 from app.exceptions import register_exception_handlers
 from app.logging_config import get_logger, setup_logging
@@ -163,14 +163,17 @@ def make_app() -> FastAPI:
     config_path = os.environ.get("APP_CONFIG_PATH")
 
     if config_path:
+        # Ensure config exists (auto-create from env vars if missing)
+        ensure_config(config_path)
         settings = init_settings(config_path)
     else:
-        # Fallback to argparse for local local python -m execution
+        # Fallback to argparse for local python -m execution
         # Pass empty list if we detect gunicorn/uvicorn to avoid argparse parsing
         # the WSGI/ASGI server arguments and crashing.
         import sys
         is_server_cli = any(x in sys.argv[0] for x in ["gunicorn", "uvicorn"])
         args = parse_args([] if is_server_cli else None)
+        ensure_config(args.config)
         settings = init_settings(args.config)
 
     setup_logging(settings.logging)

@@ -42,6 +42,7 @@ class YtDlpService:
 
     def __init__(self, settings: AppSettings) -> None:
         self._ytdlp = str(settings.tools.get_ytdlp_path())
+        self._ffmpeg_dir = str(settings.tools.get_ffmpeg_path().parent)
         self._ffmpeg = str(settings.tools.get_ffmpeg_path())
         self._timeout = settings.downloads.timeout
         self._retries = str(settings.downloads.retries)
@@ -63,7 +64,7 @@ class YtDlpService:
             "--dump-json",
             "--no-download",
             "--no-warnings",
-            "--ffmpeg-location", self._ffmpeg,
+            "--ffmpeg-location", self._ffmpeg_dir,
             url,
         ]
         try:
@@ -165,7 +166,7 @@ class YtDlpService:
             self._ytdlp,
             "-f", "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=1080]+bestaudio/best",
             "--merge-output-format", "mp4",
-            "--ffmpeg-location", self._ffmpeg,
+            "--ffmpeg-location", self._ffmpeg_dir,
             "--no-warnings",
             "--no-playlist",
             "--write-thumbnail",

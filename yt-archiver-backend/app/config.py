@@ -6,11 +6,10 @@ Config is loaded once at startup and cached as a singleton.
 """
 
 from __future__ import annotations
-import shutil
 
 import argparse
+import os
 import sys
-from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
@@ -29,7 +28,7 @@ class ServerConfig(BaseModel):
     reload: bool = False
     cors_origins: list[str] = Field(default_factory=list)
     serve_frontend: bool = False
-    frontend_build_dir: str = "runtime/frontend-build"
+    frontend_build_dir: str = "frontend-build"
 
     def get_frontend_build_dir(self) -> Path:
         """Resolve frontend build directory relative to project root."""
@@ -59,34 +58,41 @@ class StorageConfig(BaseModel):
         return path.resolve()
 
 
-class ToolsConfig(BaseModel):
-    """External tool binary paths."""
+def _platform_suffix() -> str:
+    """Return the platform suffix for tool binaries."""
+    if sys.platform.startswith("linux"):
+        return "linux"
+    elif sys.platform == "darwin":
+        return "macos"
+    elif sys.platform == "win32":
+        return "windows"
+    else:
+        raise RuntimeError(f"Unsupported platform: {sys.platform}")
 
-    ytdlp_path: str = "lib/yt-dlp"
-    ffmpeg_path: str = "lib/ffmpeg"
+
+class ToolsConfig(BaseModel):
+    """External tool binary resolution.
+
+    Binaries are stored per-platform under lib/ffmpeg/ and lib/ytdlp/.
+    Layout:
+        lib/ffmpeg/{linux,macos,windows}/ffmpeg[.exe]
+        lib/ytdlp/{linux,macos,windows}/yt-dlp[.exe]
+
+    The correct subdirectory is selected automatically based on the OS.
+    """
 
     def get_ytdlp_path(self) -> Path:
-        """Resolve yt-dlp binary path."""
-        path_str = self.ytdlp_path
-        if "/" not in path_str and "\\" not in path_str:
-            resolved = shutil.which(path_str)
-            if resolved:
-                return Path(resolved)
-        path = Path(path_str)
-        if not path.is_absolute():
-            path = PROJECT_ROOT / path
+        """Resolve the platform-specific yt-dlp binary from lib/ytdlp/."""
+        suffix = _platform_suffix()
+        name = "yt-dlp.exe" if suffix == "windows" else "yt-dlp"
+        path = PROJECT_ROOT / "lib" / "ytdlp" / suffix / name
         return path.resolve()
 
     def get_ffmpeg_path(self) -> Path:
-        """Resolve ffmpeg binary path."""
-        path_str = self.ffmpeg_path
-        if "/" not in path_str and "\\" not in path_str:
-            resolved = shutil.which(path_str)
-            if resolved:
-                return Path(resolved)
-        path = Path(path_str)
-        if not path.is_absolute():
-            path = PROJECT_ROOT / path
+        """Resolve the platform-specific ffmpeg binary from lib/ffmpeg/."""
+        suffix = _platform_suffix()
+        name = "ffmpeg.exe" if suffix == "windows" else "ffmpeg"
+        path = PROJECT_ROOT / "lib" / "ffmpeg" / suffix / name
         return path.resolve()
 
 
@@ -132,6 +138,91 @@ class AppSettings(BaseModel):
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
     downloads: DownloadsConfig = Field(default_factory=DownloadsConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
+
+
+# ---------------------------------------------------------------------------
+# Default config generation from environment variables
+# ---------------------------------------------------------------------------
+
+_DEFAULT_CORS_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:3100",
+    "https://www.youtube.com",
+    "https://m.youtube.com",
+    "https://music.youtube.com",
+]
+
+
+def generate_default_config() -> dict:
+    """Build a config dict from YTA_* environment variables with defaults.
+
+    This is used when no config file exists (e.g. first run in Docker).
+    Every value has a sensible default so the app can start without
+    any env vars set at all.
+    """
+    cors_raw = os.environ.get("YTA_CORS_ORIGINS", "")
+    cors_origins = (
+        [o.strip() for o in cors_raw.split(",") if o.strip()]
+        if cors_raw
+        else _DEFAULT_CORS_ORIGINS
+    )
+
+    return {
+        "server": {
+            "host": "0.0.0.0",
+            "port": int(os.environ.get("YTA_SERVER_PORT", "8000")),
+            "reload": False,
+            "cors_origins": cors_origins,
+            "serve_frontend": os.environ.get(
+                "YTA_SERVE_FRONTEND", "true"
+            ).lower() in ("true", "1", "yes"),
+            "frontend_build_dir": "frontend-build",
+        },
+        "database": {
+            "url": os.environ.get("YTA_DB_URL", "mongodb://localhost:27017"),
+            "name": os.environ.get("YTA_DB_NAME", "yt_archiver"),
+        },
+        "storage": {
+            "videos_dir": os.environ.get("YTA_VIDEOS_DIR", "runtime/videos"),
+        },
+        "downloads": {
+            "max_concurrent": int(
+                os.environ.get("YTA_MAX_CONCURRENT", "1")
+            ),
+            "max_retries": 3,
+            "timeout": 7200,
+            "cooldown_seconds": 10,
+            "retries": 3,
+        },
+        "logging": {
+            "level": os.environ.get("YTA_LOG_LEVEL", "INFO"),
+            "format": os.environ.get("YTA_LOG_FORMAT", "json"),
+            "log_dir": "runtime/logs",
+            "log_file": "app.log",
+        },
+    }
+
+
+def ensure_config(config_path: str | Path) -> Path:
+    """Ensure the config file exists; create from env vars if missing.
+
+    If the file already exists it is left untouched.
+
+    Returns:
+        Resolved absolute path to the config file.
+    """
+    path = Path(config_path)
+    if not path.is_absolute():
+        path = PROJECT_ROOT / path
+
+    if not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        config = generate_default_config()
+        with open(path, "w") as f:
+            yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+
+    return path
 
 
 def load_config(config_path: str | Path) -> AppSettings:

@@ -9,9 +9,8 @@ server:
     - "https://www.youtube.com"
     - "https://m.youtube.com"
     - "https://music.youtube.com"
-    - "https://music.youtube.com"
   serve_frontend: true
-  frontend_build_dir: "runtime/frontend-build"
+  frontend_build_dir: "frontend-build"
 
 database:
   url: "mongodb://localhost:27017"
@@ -19,10 +18,6 @@ database:
 
 storage:
   videos_dir: "runtime/videos"
-
-tools:
-  ytdlp_path: "yt-dlp"
-  ffmpeg_path: "lib/ffmpeg/ffmpeg"
 
 downloads:
   max_concurrent: 1
