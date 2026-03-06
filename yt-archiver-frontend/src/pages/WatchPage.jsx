@@ -97,7 +97,7 @@ export default function WatchPage() {
       <Box sx={{ flex: 1, minWidth: 0 }}>
         {/* Video Player */}
         {video.status === "completed" ? (
-          <VideoPlayer src={streamUrl} poster={posterUrl} />
+          <VideoPlayer src={streamUrl} poster={posterUrl} videoId={video.video_id || video.id} />
         ) : (
           <Box
             sx={{
