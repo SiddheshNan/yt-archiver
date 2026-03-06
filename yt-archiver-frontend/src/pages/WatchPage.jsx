@@ -11,6 +11,7 @@ import DeleteOutlinedIcon from "@mui/icons-material/DeleteOutlined";
 import { Icon } from "@iconify/react";
 import VideoPlayer from "@/components/VideoPlayer";
 import ChannelAvatar from "@/components/ChannelAvatar";
+import Alert from "@mui/material/Alert";
 import { videoApi, channelApi } from "@/services/api";
 import { formatDuration, timeAgo, formatFileSize, formatViews } from "@/utils/format";
 
@@ -22,6 +23,11 @@ export default function WatchPage() {
   const [relatedVideos, setRelatedVideos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showFullDescription, setShowFullDescription] = useState(false);
+  
+  // Rearchive State
+  const [rearchiving, setRearchiving] = useState(false);
+  const [rearchiveMessage, setRearchiveMessage] = useState(null);
+  const [rearchiveError, setRearchiveError] = useState(null);
 
   useEffect(() => {
     const fetchVideo = async () => {
@@ -135,6 +141,17 @@ export default function WatchPage() {
             </Box>
           </Box>
         )}
+        
+        {rearchiveMessage && (
+          <Alert severity="success" sx={{ mt: 2, bgcolor: "rgba(34,197,94,0.1)", color: "#4ade80" }}>
+            {rearchiveMessage}
+          </Alert>
+        )}
+        {rearchiveError && (
+          <Alert severity="error" sx={{ mt: 2, bgcolor: "rgba(255,86,48,0.1)", color: "#ff5630" }}>
+            {rearchiveError}
+          </Alert>
+        )}
 
         {/* ── Video Info (YouTube-style) ── */}
         <Box sx={{ px: { xs: 2, lg: 0 }, mt: 1.5 }}>
@@ -205,6 +222,7 @@ export default function WatchPage() {
                     borderRadius: 10,
                     "&:hover": { bgcolor: "rgba(255, 255, 255, 0.2)" },
                     transition: "background-color 0.2s",
+                    cursor: "not-allowed"
                   }}
                 >
                   {/* Like Button */}
@@ -267,6 +285,47 @@ export default function WatchPage() {
                 <DownloadOutlinedIcon fontSize="small" sx={{ color: "#f1f1f1" }} />
                 <Typography variant="body2" sx={{ color: "#f1f1f1", fontWeight: 600 }}>
                   Download {video.file_size && `(${formatFileSize(video.file_size)})`}
+                </Typography>
+              </Box>
+
+              {/* Rearchive Pill */}
+              <Box
+                onClick={async () => {
+                  if (rearchiving) return;
+                  if (!window.confirm("Verify availability and re-archive this video? This deletes the current file and queues a fresh download.")) return;
+                  
+                  setRearchiving(true);
+                  setRearchiveMessage(null);
+                  setRearchiveError(null);
+                  try {
+                    const { data } = await videoApi.rearchive(video.id);
+                    setRearchiveMessage(data.message || "Video queued for re-archiving");
+                    // Force the video object locally to pending so the UI updates to show the giant Pending clock icon
+                    setVideo((prev) => ({ ...prev, status: "pending", file_path: null }));
+                  } catch (err) {
+                    const msg = err.response?.data?.error?.message || err.response?.data?.detail || err.message;
+                    setRearchiveError(msg);
+                  } finally {
+                    setRearchiving(false);
+                  }
+                }}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  px: 2,
+                  py: 0.75,
+                  bgcolor: "rgba(255, 255, 255, 0.1)",
+                  borderRadius: 10,
+                  cursor: "pointer",
+                  "&:hover": { bgcolor: "rgba(255, 255, 255, 0.2)" },
+                  transition: "background-color 0.2s",
+                  opacity: rearchiving ? 0.5 : 1,
+                }}
+              >
+                {rearchiving ? <CircularProgress size={16} sx={{ color: "#f1f1f1" }} /> : <Icon icon="mdi:refresh" width={20} color="#f1f1f1" />}
+                <Typography variant="body2" sx={{ color: "#f1f1f1", fontWeight: 600 }}>
+                  {rearchiving ? "Checking..." : "Rearchive"}
                 </Typography>
               </Box>
 

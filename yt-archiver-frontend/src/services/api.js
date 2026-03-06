@@ -23,6 +23,8 @@ export const videoApi = {
 
   delete: (id) => api.delete(`/api/videos/${id}`),
 
+  rearchive: (id) => api.post(`/api/videos/${id}/rearchive`),
+
   getStreamUrl: (id) => `${api.defaults.baseURL}/api/videos/${id}/stream`,
 
   getThumbnailUrl: (id) => `${api.defaults.baseURL}/api/videos/${id}/thumbnail`,

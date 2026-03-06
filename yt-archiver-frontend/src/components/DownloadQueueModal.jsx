@@ -140,7 +140,7 @@ export default function DownloadQueueModal({ open, onClose }) {
             ))}
             {/* Pending */}
             {pendingVideos.map((video) => (
-              <QueueItem key={video.id} video={video} status="pending" />
+              <QueueItem key={video.id} video={video} status="pending" onDelete={fetchQueue} />
             ))}
           </Box>
         )}
@@ -149,7 +149,7 @@ export default function DownloadQueueModal({ open, onClose }) {
   );
 }
 
-function QueueItem({ video, status }) {
+function QueueItem({ video, status, onDelete }) {
   const thumbnailUrl = video.thumbnail_path
     ? videoApi.getThumbnailUrl(video.id)
     : video.thumbnail_url;
@@ -240,6 +240,26 @@ function QueueItem({ video, status }) {
           flexShrink: 0,
         }}
       />
+      
+      {/* Delete from Queue Button */}
+      {status === "pending" && (
+        <IconButton 
+          size="small" 
+          sx={{ color: "#ff4444", "&:hover": { bgcolor: "rgba(255,68,68,0.1)" } }}
+          onClick={async (e) => {
+            e.stopPropagation();
+            if (!window.confirm("Remove this pending video from the download queue?")) return;
+            try {
+              await videoApi.delete(video.id);
+              if (onDelete) onDelete();
+            } catch (err) {
+              console.error("Failed to remove pending video from queue", err);
+            }
+          }}
+        >
+          <Icon icon="mdi:trash-can-outline" width={18} />
+        </IconButton>
+      )}
     </Box>
   );
 }

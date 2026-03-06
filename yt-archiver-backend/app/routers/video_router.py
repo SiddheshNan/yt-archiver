@@ -110,6 +110,21 @@ async def add_playlist(
     return await service.archive_channel(request.url, url_type="playlist")
 
 
+@router.post(
+    "/{video_id}/rearchive",
+    response_model=AddVideoResponse,
+    status_code=202,
+    summary="Re-archive a video",
+    description="Check if a previously downloaded video is still available on YouTube. "
+                "If it is, delete the old file and re-queue it for download.",
+)
+async def rearchive_video(
+    video_id: str,
+    service: VideoService = Depends(_get_video_service),
+) -> AddVideoResponse:
+    return await service.rearchive_video(video_id)
+
+
 @router.get(
     "",
     response_model=PaginatedResponse[VideoSummaryResponse],

@@ -22,7 +22,7 @@ import requests
 from bson import ObjectId
 
 from app.config import AppSettings
-from app.exceptions import DuplicateError, NotFoundError, ValidationError
+from app.exceptions import DuplicateError, NotFoundError, ValidationError, ToolError
 from app.logging_config import get_logger
 from app.models.channel import new_channel_document
 from app.models.video import (
@@ -280,6 +280,80 @@ class VideoService:
         except Exception as e:
             logger.error("background_playlist_extraction_failed",
                          url=channel_url, error=str(e), exc_info=True)
+
+    async def rearchive_video(self, db_id: str) -> AddVideoResponse:
+        """Re-archive an existing video.
+
+        1. Wait for yt-dlp to synchronously verify the video is still available.
+        2. Delete the old MP4/WebP from disk.
+        3. Clear the DB file_path to mark it as undownloaded.
+        4. Reset status to pending and enqueue a download job.
+        """
+        doc = self._video_repo.find_by_id(db_id)
+        if not doc:
+            raise NotFoundError("Video", db_id)
+
+        video_id = doc["video_id"]
+        channel_name = doc.get("channel_name", "Unknown")
+        url = f"https://www.youtube.com/watch?v={video_id}"
+
+        logger.info("rearchive_availability_check", video_id=video_id)
+        try:
+            # We don't use the semaphore here because this is a single, synchronous user-facing request,
+            # and we need it to immediately answer 400 if the video is struck by copyright.
+            await self._ytdlp.extract_metadata(url)
+        except ToolError:
+            raise ValidationError(
+                "This video is no longer available on YouTube. The current archive will be preserved.")
+
+        # The video is online. We can safely purge our local copies.
+        logger.info("rearchive_clearing_old_files", video_id=video_id)
+
+        def _normalize_path(p_str: str) -> Path:
+            if "runtime/videos/" in p_str:
+                p_str = p_str.split("runtime/videos/")[-1]
+            path_obj = Path(p_str)
+            if path_obj.is_absolute():
+                return path_obj
+            return self._videos_dir / p_str
+
+        if doc.get("file_path"):
+            path = _normalize_path(doc["file_path"])
+            if path.exists():
+                path.unlink()
+
+        if doc.get("thumbnail_path"):
+            tpath = _normalize_path(doc["thumbnail_path"])
+            if tpath.exists():
+                tpath.unlink()
+
+        # Update Database to reflect un-downloaded state
+        self._video_repo.update(db_id, {
+            "status": STATUS_PENDING,
+            "file_path": None,
+            "file_size": None,
+            "thumbnail_path": None,
+            "error_message": None,
+        })
+
+        # Enqueue Download
+        output_dir = self._videos_dir / _sanitize_dirname(channel_name)
+        job = DownloadJob(
+            video_db_id=db_id,
+            video_id=video_id,
+            url=url,
+            output_dir=output_dir,
+            retries_left=self._settings.downloads.max_retries,
+        )
+        self._download_manager.enqueue(job)
+        logger.info("rearchive_job_enqueued", video_id=video_id)
+
+        return AddVideoResponse(
+            id=db_id,
+            video_id=video_id,
+            status=STATUS_PENDING,
+            message="Video queued for re-archiving",
+        )
 
     # ── Read ────────────────────────────────────────────────────────────
 

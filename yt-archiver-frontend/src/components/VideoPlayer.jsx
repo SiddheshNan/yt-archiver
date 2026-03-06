@@ -71,6 +71,14 @@ export default function VideoPlayer({ src, poster }) {
       ref={containerRef}
       sx={{
         width: "100%",
+        // aspectRatio: "16 / 9", // we dont want this as videos can be of any aspect ratio
+        maxHeight: "80vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        bgcolor: "#000",
+        borderRadius: { xs: 0, lg: "12px" },
+        overflow: "hidden",
         "--plyr-color-main": "#006effff",
         "--plyr-video-background": "#000",
         "--plyr-menu-background": "#272727",
@@ -82,22 +90,16 @@ export default function VideoPlayer({ src, poster }) {
         "--plyr-tooltip-color": "#fff",
         "--plyr-font-family": "'DM Sans Variable', sans-serif",
         "& .plyr": {
-          borderRadius: { xs: 0, lg: "12px" },
-          overflow: "hidden",
-          maxHeight: "80vh",
-        },
-        "& .plyr__video-wrapper": {
-          maxHeight: "80vh",
-          bgcolor: "#000",
-        },
-        "& video": {
-          maxHeight: "80vh",
-          objectFit: "contain",
+          width: "100%",
+          height: "100%",
         },
         "& .plyr__control--overlaid": {
           bgcolor: "rgba(0,110,255,0.85)",
           "&:hover": { bgcolor: "#006effff" },
         },
+        "& .plyr--fullscreen-active": {
+          borderRadius: "0 !important"
+        }
       }}
     />
   );

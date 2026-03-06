@@ -164,6 +164,13 @@ class DownloadManager:
             db_id=job.video_db_id,
         )
 
+        # Verify the video hasn't been deleted by the user while waiting in the queue
+        doc = self._video_repo.find_by_id(job.video_db_id)
+        if not doc:
+            logger.info("download_cancelled_video_deleted",
+                        video_id=job.video_id)
+            return
+
         # Mark as downloading
         self._video_repo.update_status(job.video_db_id, STATUS_DOWNLOADING)
 
