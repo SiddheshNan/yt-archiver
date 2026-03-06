@@ -11,7 +11,7 @@ server:
     - "https://m.youtube.com"
     - "https://music.youtube.com"
     - "*"
-  serve_frontend: true
+  serve_frontend: false
   frontend_build_dir: "frontend-build"
 
 database:

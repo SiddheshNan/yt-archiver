@@ -100,7 +100,6 @@ export default function VideoPlayer({ src, poster, videoId }) {
       sx={{
         position: "relative",
         width: "100%",
-        // aspectRatio: "16 / 9", // we dont want this as videos can be of any aspect ratio
         maxHeight: "80vh",
         display: "flex",
         alignItems: "center",
@@ -110,7 +109,6 @@ export default function VideoPlayer({ src, poster, videoId }) {
         overflow: "hidden",
         "& .plyr-container": {
           width: "100%",
-          height: "100%",
           "--plyr-color-main": "#006effff",
           "--plyr-video-background": "#000",
           "--plyr-menu-background": "#272727",
@@ -123,14 +121,31 @@ export default function VideoPlayer({ src, poster, videoId }) {
           "--plyr-font-family": "'DM Sans Variable', sans-serif",
           "& .plyr": {
             width: "100%",
-            height: "100%",
+            "&.plyr--fullscreen-active, &:fullscreen, &:-webkit-full-screen": {
+              borderRadius: "0 !important",
+              maxHeight: "none !important",
+              height: "100dvh !important",
+              "& .plyr__video-wrapper": {
+                maxHeight: "none !important",
+                height: "100dvh !important",
+              },
+              "& video": {
+                maxHeight: "none !important",
+                height: "100dvh !important",
+              },
+            },
+          },
+          "& .plyr__video-wrapper": {
+            maxHeight: "80vh",
+            bgcolor: "#000",
+          },
+          "& video": {
+            maxHeight: "80vh",
+            objectFit: "contain",
           },
           "& .plyr__control--overlaid": {
             bgcolor: "rgba(0,110,255,0.85)",
             "&:hover": { bgcolor: "#006effff" },
-          },
-          "& .plyr--fullscreen-active": {
-            borderRadius: "0 !important"
           }
         }
       }}
