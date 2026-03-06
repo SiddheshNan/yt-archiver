@@ -8,40 +8,7 @@ APP_PORT = 8000
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-# def prepare_docker_config():
-#     dev_config_path = os.path.join(BASE_DIR, "runtime", "config", "dev.yaml")
-#     docker_config_path = os.path.join(
-#         BASE_DIR, "runtime", "config", "docker.yaml")
-
-#     print("Preparing docker.yaml based on dev.yaml...")
-#     if not os.path.exists(dev_config_path):
-#         print(f"Error: {dev_config_path} not found.")
-#         sys.exit(1)
-
-#     with open(dev_config_path, "r") as f:
-#         config = yaml.safe_load(f)
-
-#     # 1. Modify MongoDB URL to target the host machine from inside Docker
-#     if "database" in config and "url" in config["database"]:
-#         config["database"]["url"] = config["database"]["url"].replace(
-#             "localhost", "host.docker.internal"
-#         ).replace("127.0.0.1", "host.docker.internal")
-
-#     # 2. Modify tools to point to the Linux binaries inside the container
-#     if "tools" not in config:
-#         config["tools"] = {}
-
-#     config["tools"]["ytdlp_path"] = "yt-dlp"  # Installed natively via pip
-#     # Uses system ffmpeg installed via apt-get
-#     config["tools"]["ffmpeg_path"] = "ffmpeg"
-
-#     with open(docker_config_path, "w") as f:
-#         yaml.dump(config, f)
-#     print("Successfully generated runtime/config/docker.yaml")
-
-
 def main():
-    # prepare_docker_config()
 
     print(f"\n[1/3] Building docker image '{APP_NAME}'...")
     build_cmd = f"docker build -t {APP_NAME} ."

@@ -163,9 +163,11 @@ _DEFAULT_CORS_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:5173",
     "http://localhost:3100",
+    "http://localhost:8000",
     "https://www.youtube.com",
     "https://m.youtube.com",
     "https://music.youtube.com",
+    "*"
 ]
 
 
@@ -195,7 +197,7 @@ def generate_default_config() -> dict:
             "frontend_build_dir": "frontend-build",
         },
         "database": {
-            "url": os.environ.get("YTA_DB_URL", "mongodb://localhost:27017"),
+            "url": os.environ.get("YTA_DB_URL", "mongodb://host.docker.internal:27017"),
             "name": os.environ.get("YTA_DB_NAME", "yt_archiver"),
         },
         "storage": {
@@ -205,10 +207,10 @@ def generate_default_config() -> dict:
             "max_concurrent": int(
                 os.environ.get("YTA_MAX_CONCURRENT", "1")
             ),
-            "max_retries": 3,
-            "timeout": 7200,
-            "cooldown_seconds": 10,
-            "retries": 3,
+            "max_retries": int(os.environ.get("YTA_MAX_RETRIES", "3")),
+            "timeout": int(os.environ.get("YTA_TIMEOUT", "7200")),
+            "cooldown_seconds": int(os.environ.get("YTA_COOLDOWN_SECONDS", "10")),
+            "retries": int(os.environ.get("YTA_RETRIES", "3")),
         },
         "logging": {
             "level": os.environ.get("YTA_LOG_LEVEL", "INFO"),
