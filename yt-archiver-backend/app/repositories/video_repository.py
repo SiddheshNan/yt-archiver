@@ -432,6 +432,29 @@ class VideoRepository:
         logger.info("video_status_updated", id=id, status=status)
         return result.modified_count > 0
 
+    def update(self, id: str, updates: dict[str, Any]) -> bool:
+        """Update arbitrary fields of a video.
+
+        Args:
+            id: MongoDB ObjectId string.
+            updates: Dictionary of fields to update.
+
+        Returns:
+            True if a document was modified.
+        """
+        if not ObjectId.is_valid(id) or not updates:
+            return False
+
+        update_doc = updates.copy()
+        update_doc["updated_at"] = datetime.now(timezone.utc)
+
+        result: UpdateResult = self._collection.update_one(
+            {"_id": ObjectId(id)},
+            {"$set": update_doc},
+        )
+        logger.info("video_fields_updated", id=id, fields=list(updates.keys()))
+        return result.modified_count > 0
+
     # ── Delete ──────────────────────────────────────────────────────────
 
     def delete(self, id: str) -> bool:

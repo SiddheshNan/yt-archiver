@@ -24,9 +24,13 @@ storage:
 downloads:
   max_concurrent: 1
   max_retries: 3
-  timeout: 3600
+  timeout: 7200
   cooldown_seconds: 10
   retries: 3
+  # Path to Netscape cookies.txt file to bypass YouTube bot detection (e.g. "runtime/config/cookies.txt")
+  cookies_file: "runtime/config/cookies.txt"
+  # Browser name to extract cookies from (e.g. "chrome", "firefox", "safari")
+  browser_cookies: null
 
 logging:
   level: "DEBUG"

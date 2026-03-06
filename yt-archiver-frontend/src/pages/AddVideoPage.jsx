@@ -256,9 +256,15 @@ export default function AddVideoPage() {
             icon={<Icon icon="mdi:check-circle" width={22} color="#22c55e" />}
             sx={{ mt: 2, bgcolor: "rgba(34,197,94,0.12)", color: "#22c55e" }}
           >
-            <strong>{channelResult.queued?.length || 0} video(s) added to queue!</strong>
-            {channelResult.errors?.length > 0 && (
-              <span> ({channelResult.errors.length} skipped/already archived)</span>
+            {channelResult.message ? (
+              <strong>{channelResult.message}</strong>
+            ) : (
+              <>
+                <strong>{channelResult.queued?.length || 0} video(s) added to queue!</strong>
+                {channelResult.errors?.length > 0 && (
+                  <span> ({channelResult.errors.length} skipped/already archived)</span>
+                )}
+              </>
             )}
             <Box
               component="span"
@@ -332,9 +338,15 @@ export default function AddVideoPage() {
             icon={<Icon icon="mdi:check-circle" width={22} color="#22c55e" />}
             sx={{ mt: 2, bgcolor: "rgba(34,197,94,0.12)", color: "#22c55e" }}
           >
-            <strong>{playlistResult.queued?.length || 0} video(s) added from playlist to queue!</strong>
-            {playlistResult.errors?.length > 0 && (
-              <span> ({playlistResult.errors.length} skipped/already archived)</span>
+            {playlistResult.message ? (
+              <strong>{playlistResult.message}</strong>
+            ) : (
+              <>
+                <strong>{playlistResult.queued?.length || 0} video(s) added from playlist to queue!</strong>
+                {playlistResult.errors?.length > 0 && (
+                  <span> ({playlistResult.errors.length} skipped/already archived)</span>
+                )}
+              </>
             )}
             <Box
               component="span"

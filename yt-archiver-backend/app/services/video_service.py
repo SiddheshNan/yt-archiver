@@ -74,90 +74,59 @@ class VideoService:
         self._ytdlp = ytdlp_service
         self._download_manager = download_manager
         self._videos_dir = settings.storage.get_videos_path()
+        self._metadata_semaphore = asyncio.Semaphore(3)
 
     # ── Add Video ───────────────────────────────────────────────────────
 
     async def add_video(self, url: str) -> AddVideoResponse:
-        """Submit a single video URL for download.
+        """Submit a single video URL for download asynchronously.
 
         Flow:
-        1. Extract metadata via yt-dlp
-        2. Find or create the channel
-        3. Create video record with status=pending
-        4. Enqueue download job
+        1. Extract video ID instantly using local regex
+        2. Check for duplicates
+        3. Create placeholder pending video record
+        4. Spawn _process_video_background to fetch metadata and enqueue download
+        5. Return 202 Accepted instantly
 
         Args:
             url: YouTube video URL.
-
-        Returns:
-            AddVideoResponse confirming the job was queued.
-
-        Raises:
-            DuplicateError: If video already exists.
-            ValidationError: If URL is invalid.
         """
-        # Sanitize the URL: strip playlist/index params, normalize shorts, etc.
         url = clean_video_url(url)
         logger.info("add_video_sanitized", url=url)
 
-        # Extract metadata
-        metadata = await self._ytdlp.extract_metadata(url)
-        video_id = metadata.get("id")
+        video_id = extract_video_id_from_url(url)
         if not video_id:
-            raise ValidationError("Could not extract video ID from URL")
+            raise ValidationError(
+                "Could not extract video ID from URL locally")
 
-        # Check for duplicates
+        # Check for duplicates instantly
         existing = self._video_repo.find_by_video_id(video_id)
         if existing:
             raise DuplicateError("Video", video_id)
 
-        # Find or create channel
-        channel_doc = self._find_or_create_channel(metadata)
-        channel_id = channel_doc["_id"]
-
-        # Parse upload date
-        upload_date = self._parse_upload_date(metadata.get("upload_date"))
-
-        # Fetch dislike count asynchronously
-        dislikes = await self._fetch_dislikes(video_id)
-
-        # Create video record
+        # Create placeholder video record so the client gets an ID immediately
         doc = new_video_document(
             video_id=video_id,
-            title=metadata.get("title", "Untitled"),
-            description=metadata.get("description", ""),
-            duration=metadata.get("duration", 0),
-            channel_id=channel_id,
-            youtube_channel_id=metadata.get("channel_id", ""),
-            channel_name=metadata.get(
-                "channel", metadata.get("uploader", "Unknown")),
-            thumbnail_url=metadata.get("thumbnail", ""),
-            upload_date=upload_date,
-            view_count=metadata.get("view_count"),
-            like_count=metadata.get("like_count"),
-            dislike_count=dislikes,
-            tags=metadata.get("tags", []),
-            categories=metadata.get("categories", []),
+            title="Fetching metadata...",
+            description="",
+            duration=0,
+            channel_id=None,
+            youtube_channel_id="",
+            channel_name="",
+            thumbnail_url="",
+            upload_date=None,
+            view_count=None,
+            like_count=None,
+            dislike_count=None,
+            tags=[],
+            categories=[],
         )
         db_id = self._video_repo.create(doc)
 
-        # Increment channel video count
-        self._channel_repo.increment_video_count(str(channel_id))
-
-        # Build output directory: videos_dir / channel-name /
-        channel_name = metadata.get(
-            "channel", metadata.get("uploader", "Unknown"))
-        output_dir = self._videos_dir / _sanitize_dirname(channel_name)
-
-        # Enqueue download job
-        job = DownloadJob(
-            video_db_id=db_id,
-            video_id=video_id,
-            url=url,
-            output_dir=output_dir,
-            retries_left=self._settings.downloads.max_retries,
+        # Spawn background task to do the heavy lifting
+        asyncio.create_task(
+            self._process_video_background(db_id, video_id, url)
         )
-        self._download_manager.enqueue(job)
 
         return AddVideoResponse(
             id=db_id,
@@ -165,6 +134,67 @@ class VideoService:
             status=STATUS_PENDING,
             message="Video download queued",
         )
+
+    async def _process_video_background(self, db_id: str, video_id: str, url: str) -> None:
+        """Background worker to fetch yt-dlp metadata and enqueue the download."""
+        logger.info("background_processing_started", video_id=video_id)
+        try:
+            # Bound concurrent subprocess and network requests to prevent server crash on large batches
+            async with self._metadata_semaphore:
+                # Extract metadata
+                metadata = await self._ytdlp.extract_metadata(url)
+
+                # Find or create channel
+                channel_doc = self._find_or_create_channel(metadata)
+                channel_id = channel_doc["_id"]
+
+                # Parse upload date and fetch dislikes
+                upload_date = self._parse_upload_date(
+                    metadata.get("upload_date"))
+                dislikes = await self._fetch_dislikes(video_id)
+
+            channel_name = metadata.get(
+                "channel", metadata.get("uploader", "Unknown"))
+
+            # Rich update to the placeholder document
+            self._video_repo.update(db_id, {
+                "title": metadata.get("title", "Untitled"),
+                "description": metadata.get("description", ""),
+                "duration": metadata.get("duration", 0),
+                "channel_id": channel_id,
+                "youtube_channel_id": metadata.get("channel_id", ""),
+                "channel_name": channel_name,
+                "thumbnail_url": metadata.get("thumbnail", ""),
+                "upload_date": upload_date,
+                "view_count": metadata.get("view_count"),
+                "like_count": metadata.get("like_count"),
+                "dislike_count": dislikes,
+                "tags": metadata.get("tags", []),
+                "categories": metadata.get("categories", []),
+            })
+
+            # Increment channel video count
+            self._channel_repo.increment_video_count(str(channel_id))
+
+            # Build output directory
+            output_dir = self._videos_dir / _sanitize_dirname(channel_name)
+
+            # Enqueue download job
+            job = DownloadJob(
+                video_db_id=db_id,
+                video_id=video_id,
+                url=url,
+                output_dir=output_dir,
+                retries_left=self._settings.downloads.max_retries,
+            )
+            self._download_manager.enqueue(job)
+            logger.info("background_processing_finished", video_id=video_id)
+
+        except Exception as e:
+            logger.error("background_processing_failed",
+                         video_id=video_id, error=str(e), exc_info=True)
+            self._video_repo.update_status(
+                db_id, STATUS_FAILED, error_message=str(e))
 
     async def add_videos_batch(self, urls: list[str]) -> BatchAddVideosResponse:
         """Submit multiple video URLs for download.
@@ -191,41 +221,65 @@ class VideoService:
         return BatchAddVideosResponse(queued=queued, errors=errors)
 
     async def archive_channel(self, channel_url: str, url_type: str = "channel") -> BatchAddVideosResponse:
-        """Archive all videos from a channel or playlist URL.
+        """Archive all videos from a channel or playlist URL asynchronously.
 
         Flow:
-        1. Extract playlist entries via yt-dlp --flat-playlist
-        2. For each entry, call add_video() (skips duplicates)
+        1. Sanitize the URL.
+        2. Spin up a background task and wait for the flat playlist.
+        3. Instantly return a 202 message confirming work has started.
 
         Args:
             channel_url: YouTube channel or playlist URL.
             url_type: Either "channel" or "playlist".
 
         Returns:
-            BatchAddVideosResponse with queued jobs and errors.
+            BatchAddVideosResponse indicating extraction has begun.
         """
         # Clean URL based on explicit type
         if url_type == "playlist":
             channel_url = clean_playlist_url(channel_url)
         else:
             channel_url = clean_channel_url(channel_url)
+
         logger.info("archive_channel_sanitized",
                     url=channel_url, url_type=url_type)
 
-        entries = await self._ytdlp.extract_playlist_video_urls(channel_url)
-        logger.info("channel_archive_entries",
-                    count=len(entries), url=channel_url)
+        # Dispatch background work
+        asyncio.create_task(
+            self._process_playlist_background(channel_url)
+        )
 
-        urls = []
-        for entry in entries:
-            entry_url = entry.get("url") or entry.get("webpage_url")
-            entry_id = entry.get("id")
-            if entry_id:
-                entry_url = entry_url or f"https://www.youtube.com/watch?v={entry_id}"
-            if entry_url:
-                urls.append(entry_url)
+        return BatchAddVideosResponse(
+            message=f"Extraction started for {url_type}. Videos will appear in the queue shortly."
+        )
 
-        return await self.add_videos_batch(urls)
+    async def _process_playlist_background(self, channel_url: str) -> None:
+        """Background worker to extract playlist URLs and add them to the queue."""
+        logger.info("background_playlist_extraction_started", url=channel_url)
+        try:
+            # Re-use metadata semaphore to prevent flat-playlist extraction from overloading the server
+            async with self._metadata_semaphore:
+                entries = await self._ytdlp.extract_playlist_video_urls(channel_url)
+
+            logger.info("channel_archive_entries",
+                        count=len(entries), url=channel_url)
+
+            urls = []
+            for entry in entries:
+                entry_url = entry.get("url") or entry.get("webpage_url")
+                entry_id = entry.get("id")
+                if entry_id:
+                    entry_url = entry_url or f"https://www.youtube.com/watch?v={entry_id}"
+                if entry_url:
+                    urls.append(entry_url)
+
+            # This delegates to the newly async add_video internally, saving even more time
+            await self.add_videos_batch(urls)
+            logger.info("background_playlist_extraction_finished",
+                        url=channel_url, queued_count=len(urls))
+        except Exception as e:
+            logger.error("background_playlist_extraction_failed",
+                         url=channel_url, error=str(e), exc_info=True)
 
     # ── Read ────────────────────────────────────────────────────────────
 

@@ -91,5 +91,6 @@ class AddVideoResponse(BaseModel):
 class BatchAddVideosResponse(BaseModel):
     """Response body for POST /api/videos/batch."""
 
-    queued: list[AddVideoResponse]
-    errors: list[dict]
+    message: str | None = None
+    queued: list[AddVideoResponse] = Field(default_factory=list)
+    errors: list[dict] = Field(default_factory=list)

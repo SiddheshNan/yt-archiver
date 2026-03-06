@@ -122,6 +122,19 @@ class DownloadsConfig(BaseModel):
                                   description="Delay between consecutive downloads")
     retries: int = Field(default=3, ge=0, le=10,
                          description="yt-dlp retries per download")
+    cookies_file: str | None = Field(default=None,
+                                     description="Path to Netscape cookies.txt file to bypass YouTube bot detection")
+    browser_cookies: str | None = Field(default=None,
+                                        description="Browser name to extract cookies from (e.g. chrome, firefox, safari)")
+
+    def get_cookies_file_path(self) -> Path | None:
+        """Resolve cookies_file relative to project root."""
+        if not self.cookies_file:
+            return None
+        path = Path(self.cookies_file)
+        if not path.is_absolute():
+            path = PROJECT_ROOT / path
+        return path.resolve()
 
 
 class LoggingConfig(BaseModel):
@@ -211,6 +224,8 @@ def generate_default_config() -> dict:
             "timeout": int(os.environ.get("YTA_TIMEOUT", "7200")),
             "cooldown_seconds": int(os.environ.get("YTA_COOLDOWN_SECONDS", "10")),
             "retries": int(os.environ.get("YTA_RETRIES", "3")),
+            "cookies_file": os.environ.get("YTA_COOKIES_FILE", None),
+            "browser_cookies": os.environ.get("YTA_BROWSER_COOKIES", None),
         },
         "logging": {
             "level": os.environ.get("YTA_LOG_LEVEL", "INFO"),

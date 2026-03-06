@@ -46,6 +46,18 @@ class YtDlpService:
         self._ffmpeg = str(settings.tools.get_ffmpeg_path())
         self._timeout = settings.downloads.timeout
         self._retries = str(settings.downloads.retries)
+        self._cookies_file = settings.downloads.get_cookies_file_path()
+        self._browser_cookies = settings.downloads.browser_cookies
+
+    def _append_cookie_args(self, cmd: list[str]) -> None:
+        """Inject cookie arguments into the yt-dlp command list before the URL."""
+        # The URL is always the last element in the cmd list
+        if self._cookies_file and self._cookies_file.exists():
+            cmd.insert(-1, "--cookies")
+            cmd.insert(-1, str(self._cookies_file))
+        elif self._browser_cookies:
+            cmd.insert(-1, "--cookies-from-browser")
+            cmd.insert(-1, self._browser_cookies)
 
     async def extract_metadata(self, url: str) -> dict[str, Any]:
         """Extract video metadata without downloading.
@@ -64,9 +76,11 @@ class YtDlpService:
             "--dump-json",
             "--no-download",
             "--no-warnings",
+            "--js-runtimes", "node",
             "--ffmpeg-location", self._ffmpeg_dir,
             url,
         ]
+        self._append_cookie_args(cmd)
         try:
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
@@ -108,8 +122,10 @@ class YtDlpService:
             "--flat-playlist",
             "--dump-json",
             "--no-warnings",
+            "--js-runtimes", "node",
             url,
         ]
+        self._append_cookie_args(cmd)
         try:
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
@@ -168,6 +184,7 @@ class YtDlpService:
             "--merge-output-format", "mp4",
             "--ffmpeg-location", self._ffmpeg_dir,
             "--no-warnings",
+            "--js-runtimes", "node",
             "--no-playlist",
             "--write-thumbnail",
             "--retries", self._retries,
@@ -176,6 +193,7 @@ class YtDlpService:
             "--print", "after_move:filepath",
             url,
         ]
+        self._append_cookie_args(cmd)
         try:
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
@@ -226,6 +244,7 @@ class YtDlpService:
             "--flat-playlist",
             "--playlist-items", "0",
             "--no-warnings",
+            "--js-runtimes", "node",
             channel_url,
         ]
         try:

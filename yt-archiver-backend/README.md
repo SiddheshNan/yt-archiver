@@ -51,6 +51,30 @@ python -m app.main
 python -m app.main --config runtime/config/prod.yaml
 ```
 
+### High Quality Video & Bot Detection
+
+When downloading many videos or entire playlists, YouTube may flag your IP as an automated bot. When this happens, it often restricts video quality to 360p (falling back to a pre-merged format). 
+
+To fix this and guarantee 1080p downloads, authenticate `yt-dlp` as a real user:
+
+**Option 1: Cookies File (Recommended for Docker)**
+1. Export a Netscape format `cookies.txt` from a logged-in YouTube session in your browser (using extensions like "Get cookies.txt LOCALLY").
+2. Place it at `runtime/config/cookies.txt`.
+3. In `dev.yaml` or `prod.yaml`, set:
+   ```yaml
+   downloads:
+     cookies_file: "runtime/config/cookies.txt"
+   ```
+   *(Or pass the environment variable `YTA_COOKIES_FILE=runtime/config/cookies.txt`)*
+
+**Option 2: Browser Extraction (Recommended for Local Dev)**
+If running locally (not in Docker), `yt-dlp` can extract cookies directly from your browser.
+1. In `dev.yaml`, set:
+   ```yaml
+   downloads:
+     browser_cookies: "chrome" # Or "firefox", "safari", "edge"
+   ```
+
 ### API Docs
 
 Open http://localhost:8000/docs for Swagger UI.
