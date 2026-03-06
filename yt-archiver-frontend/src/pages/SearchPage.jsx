@@ -183,8 +183,9 @@ function SearchResultCard({ video }) {
 
         <Typography variant="caption" sx={{ color: "#AAAAAA", display: "block", mb: 1, fontSize: "0.75rem" }}>
           {video.view_count != null ? `${formatViews(video.view_count)} • ` : ""}
-          {timeAgo(video.upload_date)}
-          {video.duration > 0 && ` • ${formatDuration(video.duration)}`}
+          {video.upload_date ? `Published ${timeAgo(video.upload_date)} • ` : ""}
+          {/* {video.duration > 0 && ` • ${formatDuration(video.duration)}`} */}
+          {video.created_at ? `Archived ${timeAgo(video.created_at)}` : ""}
         </Typography>
 
         <Box

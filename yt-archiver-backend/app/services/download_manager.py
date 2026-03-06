@@ -148,6 +148,10 @@ class DownloadManager:
                     )
                 finally:
                     self._queue.task_done()
+                    # Cooldown between downloads to avoid YouTube rate-limiting
+                    cooldown = self._settings.downloads.cooldown_seconds
+                    if cooldown > 0:
+                        await asyncio.sleep(cooldown)
         except asyncio.CancelledError:
             logger.info("worker_cancelled", worker=name)
 

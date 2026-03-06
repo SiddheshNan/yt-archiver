@@ -97,6 +97,10 @@ class DownloadsConfig(BaseModel):
     max_retries: int = Field(default=2, ge=0, le=10)
     timeout: int = Field(default=3600, ge=60,
                          description="Per-video timeout in seconds")
+    cooldown_seconds: int = Field(default=10, ge=0,
+                                  description="Delay between consecutive downloads")
+    retries: int = Field(default=3, ge=0, le=10,
+                         description="yt-dlp retries per download")
 
 
 class LoggingConfig(BaseModel):

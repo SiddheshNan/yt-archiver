@@ -44,6 +44,7 @@ class YtDlpService:
         self._ytdlp = str(settings.tools.get_ytdlp_path())
         self._ffmpeg = str(settings.tools.get_ffmpeg_path())
         self._timeout = settings.downloads.timeout
+        self._retries = str(settings.downloads.retries)
 
     async def extract_metadata(self, url: str) -> dict[str, Any]:
         """Extract video metadata without downloading.
@@ -162,12 +163,14 @@ class YtDlpService:
         logger.info("downloading_video", url=url, output_dir=str(output_dir))
         cmd = [
             self._ytdlp,
-            "-f", "bestvideo+bestaudio/best",
+            "-f", "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=1080]+bestaudio/best",
             "--merge-output-format", "mp4",
             "--ffmpeg-location", self._ffmpeg,
             "--no-warnings",
             "--no-playlist",
             "--write-thumbnail",
+            "--retries", self._retries,
+            "--fragment-retries", self._retries,
             "-o", output_template,
             "--print", "after_move:filepath",
             url,
