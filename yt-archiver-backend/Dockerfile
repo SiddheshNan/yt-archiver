@@ -10,7 +10,6 @@ WORKDIR /app
 # Copy project metadata and code
 COPY pyproject.toml .
 COPY app/ app/
-COPY lib/ lib/
 
 # Copy pre-built frontend assets (built by build_prod_docker.py)
 COPY frontend-build/ frontend-build/

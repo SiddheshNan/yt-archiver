@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import shutil
 import sys
 from pathlib import Path
 from typing import Literal
@@ -78,22 +79,36 @@ class ToolsConfig(BaseModel):
         lib/ffmpeg/{linux,macos,windows}/ffmpeg[.exe]
         lib/ytdlp/{linux,macos,windows}/yt-dlp[.exe]
 
-    The correct subdirectory is selected automatically based on the OS.
+    Resolution order:
+        1. Platform-specific binary in lib/ (for dev environments)
+        2. Fallback to tool on system PATH (for Docker: pip/apt-get)
     """
 
     def get_ytdlp_path(self) -> Path:
-        """Resolve the platform-specific yt-dlp binary from lib/ytdlp/."""
+        """Resolve yt-dlp binary: lib/ first, then PATH."""
         suffix = _platform_suffix()
         name = "yt-dlp.exe" if suffix == "windows" else "yt-dlp"
-        path = PROJECT_ROOT / "lib" / "ytdlp" / suffix / name
-        return path.resolve()
+        lib_path = PROJECT_ROOT / "lib" / "ytdlp" / suffix / name
+        if lib_path.exists():
+            return lib_path.resolve()
+        # Fallback: yt-dlp from PATH (pip-installed)
+        resolved = shutil.which("yt-dlp")
+        if resolved:
+            return Path(resolved)
+        return lib_path.resolve()  # return lib path anyway for error messages
 
     def get_ffmpeg_path(self) -> Path:
-        """Resolve the platform-specific ffmpeg binary from lib/ffmpeg/."""
+        """Resolve ffmpeg binary: lib/ first, then PATH."""
         suffix = _platform_suffix()
         name = "ffmpeg.exe" if suffix == "windows" else "ffmpeg"
-        path = PROJECT_ROOT / "lib" / "ffmpeg" / suffix / name
-        return path.resolve()
+        lib_path = PROJECT_ROOT / "lib" / "ffmpeg" / suffix / name
+        if lib_path.exists():
+            return lib_path.resolve()
+        # Fallback: ffmpeg from PATH (apt-get installed)
+        resolved = shutil.which("ffmpeg")
+        if resolved:
+            return Path(resolved)
+        return lib_path.resolve()  # return lib path anyway for error messages
 
 
 class DownloadsConfig(BaseModel):

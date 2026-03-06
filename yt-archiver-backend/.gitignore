@@ -8,6 +8,8 @@ build/
 .venv/
 venv/
 
+frontend-build/
+
 # Runtime data (generated, not part of source)
 runtime/videos/
 runtime/logs/
@@ -213,3 +215,10 @@ _data/application.db
 application.db
 
 application_build*
+
+ffmpeg
+ffmpeg.exe
+
+
+yt-dlp
+yt-dlp.exe
