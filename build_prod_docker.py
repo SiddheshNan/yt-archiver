@@ -22,7 +22,7 @@ DOCKER_TAG = "latest"
 CONTAINER_NAME = "yt_archiver"
 
 # Persistent runtime directory
-RUNTIME_DIR = BACKEND_DIR / "runtime"
+RUNTIME_DIR = PROJECT_ROOT / "docker_runtime"
 
 
 def run_command(cmd, cwd=None, description="", capture=False):
