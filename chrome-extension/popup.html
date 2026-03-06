@@ -25,9 +25,9 @@
     }
     label {
       display: block;
-      font-size: 12px;
+      font-size: 11px;
       color: #aaa;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -75,7 +75,13 @@
   </div>
 
   <label for="apiUrl">Archiver API URL</label>
-  <input id="apiUrl" type="text" placeholder="http://192.168.1.110:8000">
+  <input id="apiUrl" type="text" placeholder="http://192.168.1.110:8000" style="margin-bottom: 12px;">
+
+  <label for="cfClientId">CF-Access-Client-Id (Optional)</label>
+  <input id="cfClientId" type="text" placeholder="your-client-id.access" style="margin-bottom: 12px;">
+
+  <label for="cfClientSecret">CF-Access-Client-Secret (Optional)</label>
+  <input id="cfClientSecret" type="password" placeholder="your-client-secret" style="margin-bottom: 4px;">
 
   <button id="saveBtn">Save</button>
   <div class="status" id="status"></div>

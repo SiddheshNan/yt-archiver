@@ -7,6 +7,7 @@
 
 (() => {
   "use strict";
+  console.log("YT-Archiver: Content script initialized.");
 
   const ARCHIVE_SVG = `<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-.9-2-2-2zm-5 12H9v-2h6v2zm5-7H4V4h16v3z"/></svg>`;
 
@@ -110,28 +111,38 @@
     if (!pageType) return;
 
     // Don't double-inject
-    if (document.querySelector(`.yta-archive-btn[data-page-type="${pageType}"]`)) return;
+    if (document.querySelector(`.yta-archive-btn[data-page-type="${pageType}"]`)) {
+      return;
+    }
 
     const config = getConfig(pageType);
     if (!config) return;
 
     const target = findInjectionTarget(pageType);
-    if (!target) return;
+    if (!target) {
+      console.log(`YT-Archiver: Could not find injection target for ${pageType}. Waiting for DOM mutation...`);
+      return;
+    }
 
+    console.log(`YT-Archiver: Injecting button into target for ${pageType}`);
     const btn = createButton(config, pageType);
     target.appendChild(btn);
   }
 
   // ── Handle archive click ──────────────────────────────────────────
   async function handleArchive(pageType) {
+    console.log(`YT-Archiver: Archive button clicked for pageType: ${pageType}`);
+    
     const btn = document.querySelector(`.yta-archive-btn[data-page-type="${pageType}"]`);
     if (!btn || btn.classList.contains("yta-sending")) return;
 
     const config = getConfig(pageType);
     const currentUrl = window.location.href;
 
-    // Get configured API URL
-    const { archiverApiUrl } = await chrome.storage.sync.get("archiverApiUrl");
+    // Get configured API URL and Optional Cloudflare Auth Tokens
+    const { archiverApiUrl, cfClientId, cfClientSecret } = await chrome.storage.sync.get(["archiverApiUrl", "cfClientId", "cfClientSecret"]);
+    console.log(`YT-Archiver: Loaded configured API URL: ${archiverApiUrl}`);
+    
     if (!archiverApiUrl) {
       alert("YT Archiver: Please set your Archiver API URL in the extension popup first.");
       return;
@@ -141,9 +152,13 @@
     btn.querySelector("span").textContent = config.sending;
 
     try {
+      const headers = { "Content-Type": "application/json" };
+      if (cfClientId) headers["CF-Access-Client-Id"] = cfClientId;
+      if (cfClientSecret) headers["CF-Access-Client-Secret"] = cfClientSecret;
+
       const res = await fetch(`${archiverApiUrl}${config.endpoint}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: headers,
         body: JSON.stringify({ url: currentUrl }),
       });
 
