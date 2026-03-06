@@ -17,18 +17,23 @@ const POLL_INTERVAL = 3000;
 export default function DownloadQueueModal({ open, onClose }) {
   const [pendingVideos, setPendingVideos] = useState([]);
   const [downloadingVideos, setDownloadingVideos] = useState([]);
+  const [failedVideos, setFailedVideos] = useState([]);
   const [queueInfo, setQueueInfo] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const fetchQueue = useCallback(async () => {
     try {
-      const [pendingRes, downloadingRes, queueRes] = await Promise.all([
+      const [pendingRes, downloadingRes, failedRes, queueRes] = await Promise.all([
         videoApi.list(1, 50, "pending"),
         videoApi.list(1, 50, "downloading"),
+        videoApi.list(1, 10, "failed"),
         downloadsApi.queueStatus(),
       ]);
-      setPendingVideos(pendingRes.data.items);
+      const pendingVid = pendingRes.data.items;
+      pendingVid.reverse();
+      setPendingVideos(pendingVid);
       setDownloadingVideos(downloadingRes.data.items);
+      setFailedVideos(failedRes.data.items);
       setQueueInfo(queueRes.data);
     } catch (err) {
       console.error("Failed to fetch queue:", err);
@@ -36,6 +41,18 @@ export default function DownloadQueueModal({ open, onClose }) {
       setLoading(false);
     }
   }, []);
+
+  const handleClearFailed = async () => {
+    if (!window.confirm("Remove all failed videos from the history?")) return;
+    try {
+      setLoading(true);
+      await Promise.all(failedVideos.map(v => videoApi.delete(v.id)));
+      await fetchQueue();
+    } catch (err) {
+      console.error("Failed to clear failed videos", err);
+      setLoading(false); // only need to set false here, as fetchQueue sets it to false on success
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -46,7 +63,7 @@ export default function DownloadQueueModal({ open, onClose }) {
     return () => clearInterval(interval);
   }, [open, fetchQueue]);
 
-  const totalInQueue = pendingVideos.length + downloadingVideos.length;
+  const totalInQueue = pendingVideos.length + downloadingVideos.length + failedVideos.length;
 
   return (
     <Dialog
@@ -89,9 +106,20 @@ export default function DownloadQueueModal({ open, onClose }) {
             />
           )}
         </Box>
-        <IconButton onClick={onClose} sx={{ color: "#aaa" }}>
-          <Icon icon="mdi:close" width={22} />
-        </IconButton>
+        <Box sx={{ display: "flex", gap: 1 }}>
+          {failedVideos.length > 0 && (
+            <IconButton 
+              onClick={handleClearFailed} 
+              sx={{ color: "#ff4444", "&:hover": { bgcolor: "rgba(255,68,68,0.1)" } }} 
+              title="Clear Failed Videos"
+            >
+              <Icon icon="mdi:broom" width={22} />
+            </IconButton>
+          )}
+          <IconButton onClick={onClose} sx={{ color: "#aaa" }}>
+            <Icon icon="mdi:close" width={22} />
+          </IconButton>
+        </Box>
       </DialogTitle>
 
       <DialogContent sx={{ px: 3, pb: 3 }}>
@@ -141,6 +169,10 @@ export default function DownloadQueueModal({ open, onClose }) {
             {/* Pending */}
             {pendingVideos.map((video) => (
               <QueueItem key={video.id} video={video} status="pending" onDelete={fetchQueue} />
+            ))}
+            {/* Failed */}
+            {failedVideos.map((video) => (
+              <QueueItem key={video.id} video={video} status="failed" onDelete={fetchQueue} />
             ))}
           </Box>
         )}
@@ -226,15 +258,17 @@ function QueueItem({ video, status, onDelete }) {
         icon={
           status === "downloading" ? (
             <Icon icon="mdi:download" width={14} color="#3EA6FF" />
+          ) : status === "failed" ? (
+            <Icon icon="mdi:alert-circle-outline" width={14} color="#ff4444" />
           ) : (
             <Icon icon="mdi:clock-outline" width={14} color="#AAAAAA" />
           )
         }
-        label={status === "downloading" ? "Downloading" : "Pending"}
+        label={status === "downloading" ? "Downloading" : status === "failed" ? "Failed" : "Pending"}
         size="small"
         sx={{
-          bgcolor: status === "downloading" ? "rgba(62,166,255,0.15)" : "rgba(255,255,255,0.08)",
-          color: status === "downloading" ? "#3EA6FF" : "#AAAAAA",
+          bgcolor: status === "downloading" ? "rgba(62,166,255,0.15)" : status === "failed" ? "rgba(255,68,68,0.15)" : "rgba(255,255,255,0.08)",
+          color: status === "downloading" ? "#3EA6FF" : status === "failed" ? "#ff4444" : "#AAAAAA",
           fontSize: 11,
           height: 24,
           flexShrink: 0,
@@ -242,18 +276,18 @@ function QueueItem({ video, status, onDelete }) {
       />
       
       {/* Delete from Queue Button */}
-      {status === "pending" && (
+      {(status === "pending" || status === "failed") && (
         <IconButton 
           size="small" 
           sx={{ color: "#ff4444", "&:hover": { bgcolor: "rgba(255,68,68,0.1)" } }}
           onClick={async (e) => {
             e.stopPropagation();
-            if (!window.confirm("Remove this pending video from the download queue?")) return;
+            if (!window.confirm(`Remove this ${status} video from the history?`)) return;
             try {
               await videoApi.delete(video.id);
               if (onDelete) onDelete();
             } catch (err) {
-              console.error("Failed to remove pending video from queue", err);
+              console.error(`Failed to remove ${status} video`, err);
             }
           }}
         >

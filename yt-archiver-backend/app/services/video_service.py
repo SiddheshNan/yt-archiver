@@ -27,6 +27,7 @@ from app.logging_config import get_logger
 from app.models.channel import new_channel_document
 from app.models.video import (
     STATUS_PENDING,
+    STATUS_FAILED,
     VideoStatus,
     new_video_document,
     serialize_video,
@@ -194,7 +195,11 @@ class VideoService:
             logger.error("background_processing_failed",
                          video_id=video_id, error=str(e), exc_info=True)
             self._video_repo.update_status(
-                db_id, STATUS_FAILED, error_message=str(e))
+                db_id,
+                STATUS_FAILED,
+                error_message=str(e),
+                extra_fields={"title": "Unavailable / Private Video"}
+            )
 
     async def add_videos_batch(self, urls: list[str]) -> BatchAddVideosResponse:
         """Submit multiple video URLs for download.
