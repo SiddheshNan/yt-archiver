@@ -1,0 +1,3 @@
+www.youtube.com##[aria-label="Ask"]:upward(yt-button-view-model)
+www.youtube.com##[aria-label="Download"]:upward(ytd-button-renderer)
+www.youtube.com##[aria-label="Share"]:upward(yt-button-view-model)

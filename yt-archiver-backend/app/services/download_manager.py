@@ -8,19 +8,30 @@ jobs from an asyncio.Queue and process them sequentially/concurrently.
 from __future__ import annotations
 
 import asyncio
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import requests
+
 from app.config import AppSettings
 from app.logging_config import get_logger
+from app.models.channel import new_channel_document
 from app.models.video import STATUS_COMPLETED, STATUS_DOWNLOADING, STATUS_FAILED
 from app.repositories.channel_repository import ChannelRepository
 from app.repositories.video_repository import VideoRepository
 from app.services.ytdlp_service import YtDlpService
 
 logger = get_logger(__name__)
+
+
+def _sanitize_dirname(name: str) -> str:
+    """Sanitize a string for use as a directory name."""
+    name = re.sub(r'[<>:"/\\|?*]', "_", name)
+    name = name.strip(". ")
+    return name or "unknown_channel"
 
 
 @dataclass
@@ -30,8 +41,10 @@ class DownloadJob:
     video_db_id: str          # MongoDB ObjectId string
     video_id: str             # YouTube video ID
     url: str                  # Full YouTube URL
-    output_dir: Path          # Target directory for the downloaded file
+    # Target directory (resolved after metadata for deferred jobs)
+    output_dir: Path | None = None
     retries_left: int = 0
+    needs_metadata: bool = False  # If True, fetch metadata before downloading
     created_at: datetime = field(
         default_factory=lambda: datetime.now(timezone.utc))
 
@@ -171,6 +184,12 @@ class DownloadManager:
                         video_id=job.video_id)
             return
 
+        # If the job needs metadata, fetch it first before downloading
+        if job.needs_metadata:
+            success = await self._fetch_metadata_and_enrich(job)
+            if not success:
+                return  # Video is unavailable/private — already marked failed
+
         # Mark as downloading
         self._video_repo.update_status(job.video_db_id, STATUS_DOWNLOADING)
 
@@ -244,6 +263,121 @@ class DownloadManager:
                 video_id=job.video_id,
                 error=error_msg,
             )
+
+    async def _fetch_metadata_and_enrich(self, job: DownloadJob) -> bool:
+        """Fetch metadata for a deferred job and update the DB record.
+
+        Called by _process_job when job.needs_metadata is True.
+        This is the playlist/channel path where metadata was not fetched upfront.
+
+        Returns:
+            True if metadata was fetched successfully and download should proceed.
+            False if the video is unavailable (already marked as failed in DB).
+        """
+        logger.info("deferred_metadata_fetch_started", video_id=job.video_id)
+        try:
+            metadata = await self._ytdlp.extract_metadata(job.url)
+        except Exception as e:
+            logger.error("deferred_metadata_fetch_failed",
+                         video_id=job.video_id, error=str(e))
+            self._video_repo.update_status(
+                job.video_db_id,
+                STATUS_FAILED,
+                error_message=str(e),
+                extra_fields={"title": "Unavailable / Private Video"},
+            )
+            return False
+
+        # Find or create channel
+        channel_doc = self._find_or_create_channel(metadata)
+        channel_id = channel_doc["_id"]
+
+        # Parse upload date
+        upload_date = self._parse_upload_date(metadata.get("upload_date"))
+
+        # Fetch dislikes (non-blocking, safe to fail)
+        dislikes = await self._fetch_dislikes(job.video_id)
+
+        channel_name = metadata.get(
+            "channel", metadata.get("uploader", "Unknown"))
+
+        # Update the placeholder document with real metadata
+        self._video_repo.update(job.video_db_id, {
+            "title": metadata.get("title", "Untitled"),
+            "description": metadata.get("description", ""),
+            "duration": metadata.get("duration", 0),
+            "channel_id": channel_id,
+            "youtube_channel_id": metadata.get("channel_id", ""),
+            "channel_name": channel_name,
+            "thumbnail_url": metadata.get("thumbnail", ""),
+            "upload_date": upload_date,
+            "view_count": metadata.get("view_count"),
+            "like_count": metadata.get("like_count"),
+            "dislike_count": dislikes,
+            "tags": metadata.get("tags", []),
+            "categories": metadata.get("categories", []),
+        })
+
+        # Increment channel video count
+        self._channel_repo.increment_video_count(str(channel_id))
+
+        # Resolve the output directory now that we know the channel name
+        videos_dir = self._settings.storage.get_videos_path()
+        job.output_dir = videos_dir / _sanitize_dirname(channel_name)
+
+        logger.info("deferred_metadata_fetch_finished", video_id=job.video_id,
+                    title=metadata.get("title"))
+        return True
+
+    def _find_or_create_channel(self, metadata: dict[str, Any]) -> dict[str, Any]:
+        """Find an existing channel or create a new one from video metadata."""
+        yt_channel_id = metadata.get("channel_id", "")
+        if not yt_channel_id:
+            yt_channel_id = metadata.get("uploader_id", "unknown")
+
+        existing = self._channel_repo.find_by_youtube_id(yt_channel_id)
+        if existing:
+            return existing
+
+        doc = new_channel_document(
+            youtube_channel_id=yt_channel_id,
+            name=metadata.get("channel", metadata.get("uploader", "Unknown")),
+            description=metadata.get("channel_description"),
+            thumbnail_url=metadata.get("channel_thumbnail"),
+            channel_url=metadata.get(
+                "channel_url") or metadata.get("uploader_url"),
+        )
+        channel_id = self._channel_repo.create(doc)
+        return self._channel_repo.find_by_id(channel_id)
+
+    @staticmethod
+    def _parse_upload_date(date_str: str | None) -> datetime | None:
+        """Parse yt-dlp upload_date format (YYYYMMDD) to datetime."""
+        if not date_str:
+            return None
+        try:
+            return datetime.strptime(date_str, "%Y%m%d").replace(tzinfo=timezone.utc)
+        except ValueError:
+            return None
+
+    @staticmethod
+    async def _fetch_dislikes(video_id: str) -> int | None:
+        """Safe non-blocking wrapper to fetch dislike count."""
+        def _get() -> int | None:
+            try:
+                resp = requests.get(
+                    f"https://returnyoutubedislikeapi.com/votes?videoId={video_id}",
+                    timeout=5,
+                    headers={"User-Agent": "Mozilla/5.0 yt-archiver"},
+                )
+                if resp.status_code == 200:
+                    return resp.json().get("dislikes")
+            except Exception as e:
+                logger.warning("ryd_api_error",
+                               video_id=video_id, error=str(e))
+            return None
+
+        return await asyncio.to_thread(_get)
 
     @staticmethod
     def _find_thumbnail(video_path: Path) -> Path | None:

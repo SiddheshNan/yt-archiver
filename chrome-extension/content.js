@@ -33,8 +33,8 @@
           endpoint: "/api/videos",
           label: "Archive",
           sending: "Sending…",
-          done: "Archived ✓",
-          duplicate: "Already Archived ✓",
+          done: "Archived",
+          duplicate: "Archived",
           successMsg: "Video sent for archival!",
           duplicateMsg: "This video is already archived!",
         };
@@ -43,8 +43,8 @@
           endpoint: "/api/channels/archive",
           label: "Archive Channel",
           sending: "Archiving…",
-          done: "Channel Archived ✓",
-          duplicate: "Already Archived ✓",
+          done: "Channel Archived",
+          duplicate: "Archived",
           successMsg: "Channel sent for archival! All videos will be downloaded.",
           duplicateMsg: "This channel is already archived!",
         };
@@ -53,8 +53,8 @@
           endpoint: "/api/videos/playlist",
           label: "Archive Playlist",
           sending: "Archiving…",
-          done: "Playlist Archived ✓",
-          duplicate: "Already Archived ✓",
+          done: "Playlist Archived",
+          duplicate: "Archived",
           successMsg: "Playlist sent for archival! All videos will be downloaded.",
           duplicateMsg: "This playlist is already archived!",
         };

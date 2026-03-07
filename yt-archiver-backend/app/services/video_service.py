@@ -260,32 +260,88 @@ class VideoService:
         )
 
     async def _process_playlist_background(self, channel_url: str) -> None:
-        """Background worker to extract playlist URLs and add them to the queue."""
+        """Background worker to extract playlist URLs and enqueue them with deferred metadata.
+
+        Unlike add_video (which spawns a background metadata task per video),
+        this creates skeleton DB entries and enqueues DownloadJob(needs_metadata=True).
+        The download worker will fetch metadata + download sequentially, one at a time,
+        with cooldown between each — preventing a burst of metadata requests to YouTube.
+        """
         logger.info("background_playlist_extraction_started", url=channel_url)
         try:
-            # Re-use metadata semaphore to prevent flat-playlist extraction from overloading the server
+            # Extract flat playlist (just URLs, no per-video metadata)
             async with self._metadata_semaphore:
                 entries = await self._ytdlp.extract_playlist_video_urls(channel_url)
 
             logger.info("channel_archive_entries",
                         count=len(entries), url=channel_url)
 
-            urls = []
+            queued_count = 0
             for entry in entries:
                 entry_url = entry.get("url") or entry.get("webpage_url")
                 entry_id = entry.get("id")
                 if entry_id:
                     entry_url = entry_url or f"https://www.youtube.com/watch?v={entry_id}"
                 if entry_url:
-                    urls.append(entry_url)
+                    try:
+                        self._add_video_deferred(entry_url)
+                        queued_count += 1
+                    except (DuplicateError, ValidationError) as e:
+                        logger.info("playlist_entry_skipped",
+                                    url=entry_url, reason=str(e))
 
-            # This delegates to the newly async add_video internally, saving even more time
-            await self.add_videos_batch(urls)
             logger.info("background_playlist_extraction_finished",
-                        url=channel_url, queued_count=len(urls))
+                        url=channel_url, queued_count=queued_count)
         except Exception as e:
             logger.error("background_playlist_extraction_failed",
                          url=channel_url, error=str(e), exc_info=True)
+
+    def _add_video_deferred(self, url: str) -> None:
+        """Add a video to the download queue WITHOUT fetching metadata upfront.
+
+        Used by the playlist/channel flow. Creates a skeleton DB document
+        and enqueues a DownloadJob with needs_metadata=True. The download
+        worker will handle metadata extraction + download sequentially.
+        """
+        url = clean_video_url(url)
+        video_id = extract_video_id_from_url(url)
+        if not video_id:
+            raise ValidationError("Could not extract video ID from URL")
+
+        # Skip duplicates
+        existing = self._video_repo.find_by_video_id(video_id)
+        if existing:
+            raise DuplicateError("Video", video_id)
+
+        # Create a skeleton placeholder (metadata will be filled by the download worker)
+        doc = new_video_document(
+            video_id=video_id,
+            title=f"Queued for download... [{video_id}]",
+            description="",
+            duration=0,
+            channel_id=None,
+            youtube_channel_id="",
+            channel_name="",
+            thumbnail_url="",
+            upload_date=None,
+            view_count=None,
+            like_count=None,
+            dislike_count=None,
+            tags=[],
+            categories=[],
+        )
+        db_id = self._video_repo.create(doc)
+
+        # Enqueue with deferred metadata — no background task spawned
+        job = DownloadJob(
+            video_db_id=db_id,
+            video_id=video_id,
+            url=url,
+            needs_metadata=True,
+            retries_left=self._settings.downloads.max_retries,
+        )
+        self._download_manager.enqueue(job)
+        logger.info("video_deferred_enqueued", video_id=video_id)
 
     async def rearchive_video(self, db_id: str) -> AddVideoResponse:
         """Re-archive an existing video.
