@@ -29,6 +29,7 @@ from app.schemas.video import (
     BatchAddVideosResponse,
     VideoResponse,
     VideoSummaryResponse,
+    VideoCheckResponse,
 )
 from app.services.video_service import VideoService
 
@@ -75,6 +76,19 @@ async def add_video(
     service: VideoService = Depends(_get_video_service),
 ) -> AddVideoResponse:
     return await service.add_video(request.url)
+
+
+@router.get(
+    "/check",
+    response_model=VideoCheckResponse,
+    summary="Check if a video is archived",
+    description="Check if a video exists in the database by its YouTube video ID (`v` parameter)",
+)
+def check_video(
+    v: Annotated[str, Query(description="YouTube video ID (e.g., TQqBjSAK52s)")],
+    service: VideoService = Depends(_get_video_service),
+) -> VideoCheckResponse:
+    return service.check_video(v)
 
 
 @router.post(

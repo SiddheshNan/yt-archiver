@@ -94,3 +94,10 @@ class BatchAddVideosResponse(BaseModel):
     message: str | None = None
     queued: list[AddVideoResponse] = Field(default_factory=list)
     errors: list[dict] = Field(default_factory=list)
+
+
+class VideoCheckResponse(BaseModel):
+    """Response body for GET /api/videos/check?v=<id>."""
+
+    is_archived: bool
+    status: str | None = None

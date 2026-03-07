@@ -127,6 +127,55 @@
     console.log(`YT-Archiver: Injecting button into target for ${pageType}`);
     const btn = createButton(config, pageType);
     target.appendChild(btn);
+
+    // If it's a watch page, immediately check if it's already archived
+    if (pageType === "video") {
+      checkArchiveStatus(btn, window.location.href);
+    }
+  }
+
+  // ── Check if already archived ─────────────────────────────────────
+  async function checkArchiveStatus(btn, currentUrl) {
+    try {
+      const { archiverApiUrl, cfClientId, cfClientSecret } = await chrome.storage.sync.get(["archiverApiUrl", "cfClientId", "cfClientSecret"]);
+      if (!archiverApiUrl) return;
+
+      const urlObj = new URL(currentUrl);
+      const videoId = urlObj.searchParams.get("v");
+      if (!videoId) return;
+
+      const headers = {};
+      if (cfClientId) headers["CF-Access-Client-Id"] = cfClientId;
+      if (cfClientSecret) headers["CF-Access-Client-Secret"] = cfClientSecret;
+
+      // URL encode the videoId just in case
+      const res = await fetch(`${archiverApiUrl}/api/videos/check?v=${encodeURIComponent(videoId)}`, {
+        method: "GET",
+        headers: headers,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.is_archived) {
+          btn.classList.add("yta-done");
+          
+          const config = getConfig("video");
+          if (data.status === "pending") {
+             btn.querySelector("span").textContent = "Archiving…";
+          } else if (data.status === "failed") {
+             btn.querySelector("span").textContent = "Failed";
+             btn.classList.add("yta-error");
+             btn.classList.remove("yta-done");
+          } else {
+             btn.querySelector("span").textContent = config.done;
+          }
+           // Disable the button since it's already archived
+          // btn.disabled = true; // Optional, might want to allow re-trigger or at least keep the appearance
+        }
+      }
+    } catch (err) {
+      console.warn("YT-Archiver: Failed to check archive status", err);
+    }
   }
 
   // ── Handle archive click ──────────────────────────────────────────

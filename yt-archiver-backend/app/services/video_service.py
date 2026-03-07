@@ -40,6 +40,7 @@ from app.schemas.video import (
     BatchAddVideosResponse,
     VideoResponse,
     VideoSummaryResponse,
+    VideoCheckResponse,
 )
 from app.services.download_manager import DownloadJob, DownloadManager
 from app.services.ytdlp_service import YtDlpService, extract_video_id_from_url
@@ -358,6 +359,24 @@ class VideoService:
             video_id=video_id,
             status=STATUS_PENDING,
             message="Video queued for re-archiving",
+        )
+
+    def check_video(self, video_id: str) -> VideoCheckResponse:
+        """Check if a video is already archived in the system.
+
+        Args:
+            video_id: The YouTube video ID (e.g., TQqBjSAK52s).
+
+        Returns:
+            VideoCheckResponse indicating if it's archived and its current status.
+        """
+        doc = self._video_repo.find_by_video_id(video_id)
+        if not doc:
+            return VideoCheckResponse(is_archived=False)
+
+        return VideoCheckResponse(
+            is_archived=True,
+            status=doc.get("status")
         )
 
     # ── Read ────────────────────────────────────────────────────────────
