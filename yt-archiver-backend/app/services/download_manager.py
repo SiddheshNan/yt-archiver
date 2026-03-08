@@ -205,6 +205,9 @@ class DownloadManager:
             # Find thumbnail written by --write-thumbnail
             thumbnail_path = self._find_thumbnail(file_path)
 
+            # Find subtitle files written by --write-subs / --write-auto-subs
+            subtitle_tracks = self._find_subtitle_files(file_path)
+
             # Make paths relative to videos_dir for portable storage
             videos_dir = self._settings.storage.get_videos_path()
             try:
@@ -224,6 +227,16 @@ class DownloadManager:
                     rel_thumb_path = str(thumbnail_path)
                 extra["thumbnail_path"] = rel_thumb_path
 
+            # Store subtitle tracks with relative paths
+            if subtitle_tracks:
+                for track in subtitle_tracks:
+                    try:
+                        track["path"] = str(
+                            Path(track["path"]).relative_to(videos_dir))
+                    except ValueError:
+                        pass  # keep absolute path as fallback
+                extra["subtitle_tracks"] = subtitle_tracks
+
             self._video_repo.update_status(
                 job.video_db_id,
                 STATUS_COMPLETED,
@@ -235,6 +248,7 @@ class DownloadManager:
                 file_path=str(file_path),
                 file_size=file_size,
                 thumbnail_path=str(thumbnail_path) if thumbnail_path else None,
+                subtitle_count=len(subtitle_tracks),
             )
 
         except Exception as e:
@@ -393,6 +407,64 @@ class DownloadManager:
             if candidate.exists():
                 return candidate
         return None
+
+    @staticmethod
+    def _find_subtitle_files(video_path: Path) -> list[dict[str, str]]:
+        """Find subtitle (.vtt) files alongside a downloaded video.
+
+        yt-dlp names subtitle files as: VideoTitle [id].lang.vtt
+        For auto-generated subs: VideoTitle [id].lang-orig.vtt (sometimes with complex suffixes)
+
+        Note: We can't use glob() here because the video stem contains
+        square brackets (e.g. [9HDEHj2yzew]) which glob interprets as
+        character class patterns, causing matches to silently fail.
+
+        Returns:
+            List of dicts with 'lang', 'label', and 'path' keys.
+        """
+        stem = video_path.stem
+        parent = video_path.parent
+        prefix = f"{stem}."
+        tracks: list[dict[str, str]] = []
+
+        try:
+            for entry in parent.iterdir():
+                if not entry.is_file():
+                    continue
+                if not entry.name.startswith(prefix):
+                    continue
+                if not entry.name.endswith(".vtt"):
+                    continue
+
+                # Extract the language code from the filename
+                # e.g. "Video Title [abc123].en.vtt" -> "en"
+                suffix_part = entry.name[len(prefix):]  # "en.vtt"
+                lang_code = suffix_part.rsplit(".vtt", 1)[0]  # "en"
+
+                if not lang_code:
+                    continue
+
+                # Build human-readable label
+                label = lang_code.upper()
+                if "-orig" in lang_code:
+                    # Auto-generated subtitles from yt-dlp
+                    base_lang = lang_code.split("-orig")[0]
+                    label = f"{base_lang.upper()} (auto)"
+
+                tracks.append({
+                    "lang": lang_code,
+                    "label": label,
+                    "path": str(entry),
+                })
+        except OSError as e:
+            logger.warning("subtitle_scan_error", error=str(e))
+
+        # Sort: manual subs first, auto subs last
+        tracks.sort(key=lambda t: (
+            1 if "auto" in t["label"] else 0, t["lang"]))
+        logger.info("subtitle_files_found", count=len(tracks),
+                    langs=[t["lang"] for t in tracks])
+        return tracks
 
 
 # ---------------------------------------------------------------------------

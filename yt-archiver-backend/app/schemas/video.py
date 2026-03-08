@@ -49,6 +49,7 @@ class VideoResponse(BaseModel):
     categories: list[str] = Field(default_factory=list)
     file_path: str | None
     file_size: int | None
+    subtitle_tracks: list[dict] = Field(default_factory=list)
     status: str
     error_message: str | None
     created_at: str | None

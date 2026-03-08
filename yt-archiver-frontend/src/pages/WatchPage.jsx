@@ -77,6 +77,13 @@ export default function WatchPage() {
     ? videoApi.getThumbnailUrl(id)
     : video.thumbnail_url;
 
+  // Build subtitle track list for the player
+  const subtitleTracks = (video.subtitle_tracks || []).map((t) => ({
+    lang: t.lang,
+    label: t.label,
+    src: videoApi.getSubtitleUrl(id, t.lang),
+  }));
+
   return (
     <Box
       sx={{
@@ -97,7 +104,7 @@ export default function WatchPage() {
       <Box sx={{ flex: 1, minWidth: 0 }}>
         {/* Video Player */}
         {video.status === "completed" ? (
-          <VideoPlayer src={streamUrl} poster={posterUrl} videoId={video.video_id || video.id} />
+          <VideoPlayer src={streamUrl} poster={posterUrl} videoId={video.video_id || video.id} subtitleTracks={subtitleTracks} />
         ) : (
           <Box
             sx={{

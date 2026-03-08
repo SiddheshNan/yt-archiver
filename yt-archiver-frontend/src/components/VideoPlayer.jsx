@@ -20,17 +20,19 @@ const PLYR_OPTIONS = {
     "duration",
     "mute",
     "volume",
+    "captions",
     "settings",
     "pip",
     "airplay",
     "fullscreen",
   ],
-  settings: ["speed"],
+  settings: ["captions", "speed"],
   speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] },
   keyboard: { focused: true, global: true },
   tooltips: { controls: true, seek: true },
   seekTime: 5,
   autoplay: true,
+  captions: { active: false, update: true },
 };
 
 /**
@@ -39,7 +41,7 @@ const PLYR_OPTIONS = {
  * Uses the vanilla Plyr library directly (not plyr-react) for maximum
  * control and to avoid React 18 strict-mode double-mount issues.
  */
-export default function VideoPlayer({ src, poster, videoId }) {
+export default function VideoPlayer({ src, poster, videoId, subtitleTracks = [] }) {
   const containerRef = useRef(null);
   const playerRef = useRef(null);
   const [videoEl, setVideoEl] = useState(null);
@@ -53,12 +55,24 @@ export default function VideoPlayer({ src, poster, videoId }) {
     const video = document.createElement("video");
     video.setAttribute("playsinline", "");
     video.setAttribute("controls", "");
+    video.setAttribute("crossorigin", "anonymous");
     if (poster) video.setAttribute("poster", poster);
 
     const source = document.createElement("source");
     source.setAttribute("src", src);
     source.setAttribute("type", "video/mp4");
     video.appendChild(source);
+
+    // Add subtitle tracks
+    subtitleTracks.forEach((track, idx) => {
+      const trackEl = document.createElement("track");
+      trackEl.setAttribute("kind", "captions");
+      trackEl.setAttribute("src", track.src);
+      trackEl.setAttribute("srclang", track.lang.split("-")[0]); // base lang for srclang
+      trackEl.setAttribute("label", track.label);
+      if (idx === 0) trackEl.setAttribute("default", "");
+      video.appendChild(trackEl);
+    });
 
     // Clear container and append
     containerRef.current.innerHTML = "";
@@ -74,7 +88,7 @@ export default function VideoPlayer({ src, poster, videoId }) {
         playerRef.current = null;
       }
     };
-  }, [src, poster]);
+  }, [src, poster, subtitleTracks]);
 
   const handleContextMenu = (event) => {
     event.preventDefault();

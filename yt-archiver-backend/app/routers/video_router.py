@@ -9,6 +9,7 @@ Endpoints:
     DELETE /api/videos/{id}     — Delete video + file
     GET    /api/videos/{id}/stream — Stream video file
     GET    /api/videos/{id}/thumbnail — Serve thumbnail image
+    GET    /api/videos/{id}/subtitles/{lang} — Serve subtitle file
 """
 
 from __future__ import annotations
@@ -266,4 +267,27 @@ def get_thumbnail(
         path=str(thumb_path),
         media_type=media_type,
         filename=thumb_path.name,
+    )
+
+
+@router.get(
+    "/{video_id}/subtitles/{lang}",
+    summary="Get video subtitle file",
+    description="Serves the locally stored subtitle (.vtt) file for the given language.",
+    responses={
+        200: {"content": {"text/vtt": {}}, "description": "VTT subtitle file"},
+        404: {"description": "Video or subtitle not found"},
+    },
+)
+def get_subtitle(
+    video_id: str,
+    lang: str,
+    service: VideoService = Depends(_get_video_service),
+) -> FileResponse:
+    sub_path: Path = service.get_subtitle_path(video_id, lang)
+    return FileResponse(
+        path=str(sub_path),
+        media_type="text/vtt",
+        filename=sub_path.name,
+        headers={"Access-Control-Allow-Origin": "*"},
     )

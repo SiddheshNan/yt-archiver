@@ -29,6 +29,8 @@ export const videoApi = {
 
   getThumbnailUrl: (id) => `${api.defaults.baseURL}/api/videos/${id}/thumbnail`,
 
+  getSubtitleUrl: (id, lang) => `${api.defaults.baseURL}/api/videos/${id}/subtitles/${encodeURIComponent(lang)}`,
+
   search: (q, channelId = null, page = 1, pageSize = 24) => {
     const params = { q, page, page_size: pageSize };
     if (channelId) params.channel_id = channelId;

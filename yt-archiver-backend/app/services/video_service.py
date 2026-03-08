@@ -646,6 +646,16 @@ class VideoService:
                 logger.info("thumbnail_file_deleted",
                             thumbnail_path=str(tpath))
 
+        # Delete subtitle files from disk
+        for track in doc.get("subtitle_tracks", []):
+            sub_path = track.get("path")
+            if sub_path:
+                spath = _normalize_path(sub_path)
+                if spath.exists():
+                    spath.unlink()
+                    logger.info("subtitle_file_deleted",
+                                subtitle_path=str(spath))
+
         # Decrement channel video count
         channel_id = doc.get("channel_id")
         if channel_id:
@@ -716,6 +726,41 @@ class VideoService:
 
         if not path.exists():
             raise NotFoundError("Video thumbnail", str(path))
+
+        return path
+
+    def get_subtitle_path(self, video_id: str, lang: str) -> Path:
+        """Get the local subtitle file path for a video by language code.
+
+        Args:
+            video_id: MongoDB ObjectId string.
+            lang: Language code (e.g. 'en', 'en-orig').
+
+        Returns:
+            Path to the .vtt subtitle file.
+
+        Raises:
+            NotFoundError: If video, subtitle track, or file does not exist.
+        """
+        doc = self._video_repo.find_by_id(video_id)
+        if doc is None:
+            raise NotFoundError("Video", video_id)
+
+        tracks = doc.get("subtitle_tracks", [])
+        track = next((t for t in tracks if t.get("lang") == lang), None)
+        if not track:
+            raise NotFoundError("Subtitle track", f"{video_id}/{lang}")
+
+        sub_path = track.get("path", "")
+        if not sub_path:
+            raise NotFoundError("Subtitle file", f"{video_id}/{lang}")
+
+        path = Path(sub_path)
+        if not path.is_absolute():
+            path = self._videos_dir / path
+
+        if not path.exists():
+            raise NotFoundError("Subtitle file", str(path))
 
         return path
 
