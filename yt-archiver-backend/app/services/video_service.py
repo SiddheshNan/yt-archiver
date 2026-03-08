@@ -389,12 +389,21 @@ class VideoService:
             if tpath.exists():
                 tpath.unlink()
 
+        # Delete old subtitle files from disk
+        for track in doc.get("subtitle_tracks", []):
+            sub_path = track.get("path")
+            if sub_path:
+                spath = _normalize_path(sub_path)
+                if spath.exists():
+                    spath.unlink()
+
         # Update Database to reflect un-downloaded state
         self._video_repo.update(db_id, {
             "status": STATUS_PENDING,
             "file_path": None,
             "file_size": None,
             "thumbnail_path": None,
+            "subtitle_tracks": [],
             "error_message": None,
         })
 
