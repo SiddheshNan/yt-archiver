@@ -408,12 +408,68 @@ class DownloadManager:
                 return candidate
         return None
 
+    # Language name lookup — includes base codes and common combined codes
+    _LANG_NAMES: dict[str, str] = {
+        "af": "Afrikaans", "am": "Amharic", "ar": "Arabic",
+        "az": "Azerbaijani", "be": "Belarusian", "bg": "Bulgarian",
+        "bn": "Bengali", "bs": "Bosnian", "ca": "Catalan",
+        "cs": "Czech", "da": "Danish", "de": "German",
+        "el": "Greek", "en": "English", "eo": "Esperanto",
+        "es": "Spanish", "et": "Estonian", "eu": "Basque",
+        "fa": "Persian", "fi": "Finnish", "fil": "Filipino",
+        "fr": "French", "ga": "Irish", "gl": "Galician",
+        "gu": "Gujarati", "ha": "Hausa", "he": "Hebrew",
+        "hi": "Hindi", "hr": "Croatian", "hu": "Hungarian",
+        "hy": "Armenian", "id": "Indonesian", "ig": "Igbo",
+        "is": "Icelandic", "it": "Italian", "iw": "Hebrew",
+        "ja": "Japanese", "jv": "Javanese", "ka": "Georgian",
+        "kk": "Kazakh", "km": "Khmer", "kn": "Kannada",
+        "ko": "Korean", "ku": "Kurdish", "ky": "Kyrgyz",
+        "la": "Latin", "lo": "Lao", "lt": "Lithuanian",
+        "lv": "Latvian", "mk": "Macedonian", "ml": "Malayalam",
+        "mn": "Mongolian", "mr": "Marathi", "ms": "Malay",
+        "mt": "Maltese", "my": "Burmese", "ne": "Nepali",
+        "nl": "Dutch", "no": "Norwegian", "ny": "Chichewa",
+        "pa": "Punjabi", "pl": "Polish", "ps": "Pashto",
+        "pt": "Portuguese", "pt-BR": "Portuguese (BR)",
+        "pt-PT": "Portuguese (PT)", "ro": "Romanian",
+        "ru": "Russian", "rw": "Kinyarwanda", "sd": "Sindhi",
+        "si": "Sinhala", "sk": "Slovak", "sl": "Slovenian",
+        "so": "Somali", "sq": "Albanian", "sr": "Serbian",
+        "sv": "Swedish", "sw": "Swahili", "ta": "Tamil",
+        "te": "Telugu", "th": "Thai", "tl": "Tagalog",
+        "tr": "Turkish", "uk": "Ukrainian", "ur": "Urdu",
+        "uz": "Uzbek", "vi": "Vietnamese", "xh": "Xhosa",
+        "yo": "Yoruba", "zh": "Chinese",
+        "zh-Hans": "Chinese (Simplified)", "zh-Hant": "Chinese (Traditional)",
+        "zh-CN": "Chinese (CN)", "zh-TW": "Chinese (TW)",
+        "zu": "Zulu",
+        "en-GB": "English (GB)", "en-US": "English (US)",
+        "es-419": "Spanish (Latin America)", "es-ES": "Spanish (ES)",
+        "fr-CA": "French (CA)", "fr-FR": "French (FR)",
+    }
+
+    @classmethod
+    def _make_subtitle_label(cls, lang_code: str) -> str:
+        """Build a human-readable label from a yt-dlp lang code.
+
+        Simple approach: try full code, then base code, else show as-is.
+        """
+        # Try exact match first (e.g. 'pt-BR', 'zh-Hans', 'en-GB')
+        if lang_code in cls._LANG_NAMES:
+            return cls._LANG_NAMES[lang_code]
+
+        # Try base language (first part before '-')
+        base = lang_code.split("-")[0]
+        if base in cls._LANG_NAMES:
+            return cls._LANG_NAMES[base]
+
+        # Unknown — just return the raw code
+        return lang_code
+
     @staticmethod
     def _find_subtitle_files(video_path: Path) -> list[dict[str, str]]:
         """Find subtitle (.vtt) files alongside a downloaded video.
-
-        yt-dlp names subtitle files as: VideoTitle [id].lang.vtt
-        For auto-generated subs: VideoTitle [id].lang-orig.vtt (sometimes with complex suffixes)
 
         Note: We can't use glob() here because the video stem contains
         square brackets (e.g. [9HDEHj2yzew]) which glob interprets as
@@ -437,19 +493,13 @@ class DownloadManager:
                     continue
 
                 # Extract the language code from the filename
-                # e.g. "Video Title [abc123].en.vtt" -> "en"
                 suffix_part = entry.name[len(prefix):]  # "en.vtt"
                 lang_code = suffix_part.rsplit(".vtt", 1)[0]  # "en"
 
                 if not lang_code:
                     continue
 
-                # Build human-readable label
-                label = lang_code.upper()
-                if "-orig" in lang_code:
-                    # Auto-generated subtitles from yt-dlp
-                    base_lang = lang_code.split("-orig")[0]
-                    label = f"{base_lang.upper()} (auto)"
+                label = DownloadManager._make_subtitle_label(lang_code)
 
                 tracks.append({
                     "lang": lang_code,
@@ -459,9 +509,23 @@ class DownloadManager:
         except OSError as e:
             logger.warning("subtitle_scan_error", error=str(e))
 
-        # Sort: manual subs first, auto subs last
-        tracks.sort(key=lambda t: (
-            1 if "auto" in t["label"] else 0, t["lang"]))
+        # Sort alphabetically by label
+        tracks.sort(key=lambda t: t["label"].lower())
+
+        # Number duplicates: "English", "English (2)", "English (3)"
+        label_counts: dict[str, int] = {}
+        for track in tracks:
+            label_counts[track["label"]] = label_counts.get(
+                track["label"], 0) + 1
+        label_seen: dict[str, int] = {}
+        for track in tracks:
+            lbl = track["label"]
+            if label_counts[lbl] > 1:
+                label_seen[lbl] = label_seen.get(lbl, 0) + 1
+                n = label_seen[lbl]
+                if n > 1:
+                    track["label"] = f"{lbl} ({n})"
+
         logger.info("subtitle_files_found", count=len(tracks),
                     langs=[t["lang"] for t in tracks])
         return tracks

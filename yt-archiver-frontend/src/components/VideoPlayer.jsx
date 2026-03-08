@@ -68,9 +68,8 @@ export default function VideoPlayer({ src, poster, videoId, subtitleTracks = [] 
       const trackEl = document.createElement("track");
       trackEl.setAttribute("kind", "captions");
       trackEl.setAttribute("src", track.src);
-      trackEl.setAttribute("srclang", track.lang.split("-")[0]); // base lang for srclang
+      trackEl.setAttribute("srclang", track.lang.split("-")[0]);
       trackEl.setAttribute("label", track.label);
-      if (idx === 0) trackEl.setAttribute("default", "");
       video.appendChild(trackEl);
     });
 

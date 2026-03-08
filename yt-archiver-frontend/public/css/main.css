@@ -1,13 +1,27 @@
-MuiDrawer-root {
-  z-index: 1300;
+/* ── Custom Scrollbar ── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
 }
 
-.swal2-container {
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-.input-text-wrapper-small {
-  width: 30%;
-  margin-bottom: 10em;
-  display: inline-block;
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
