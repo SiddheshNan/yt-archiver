@@ -4,9 +4,10 @@ import Typography from "@mui/material/Typography";
 import IconButton from "@mui/material/IconButton";
 import { Icon } from "@iconify/react";
 
-export default function StatsForNerdsOverlay({ videoElement, onClose, videoId }) {
+export default function StatsForNerdsOverlay({ videoElement, onClose, videoId, ytaId }) {
   const [stats, setStats] = useState({
     videoId: videoId || "unavailable",
+    ytaId: ytaId || "unavailable",
     viewport: "0x0",
     resolution: "0x0",
     volume: "100%",
@@ -71,7 +72,7 @@ export default function StatsForNerdsOverlay({ videoElement, onClose, videoId })
         fontFamily: "'Roboto Mono', monospace",
         fontSize: "0.75rem",
         zIndex: 9999,
-        width: 320,
+        width: 382,
         pointerEvents: "auto",
         boxShadow: "0 4px 6px rgba(0,0,0,0.3)",
       }}
@@ -88,7 +89,8 @@ export default function StatsForNerdsOverlay({ videoElement, onClose, videoId })
         </IconButton>
       </Box>
       
-      <StatRow label="Video ID" value={`${stats.videoId}`} />
+      <StatRow label="YT ID" value={stats.videoId} />
+      <StatRow label="YTA ID" value={stats.ytaId} />
       <StatRow label="Viewport / Frames" value={`${stats.viewport} / ${stats.droppedFrames} dropped`} />
       <StatRow label="Current / Optimal Res" value={`${stats.resolution} / ${stats.resolution}`} />
       <StatRow label="Volume / Normalized" value={`${stats.volume} / ${stats.volume}`} />

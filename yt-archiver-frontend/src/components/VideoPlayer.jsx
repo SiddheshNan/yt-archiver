@@ -6,6 +6,7 @@ import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
+import Divider from "@mui/material/Divider";
 import { Icon } from "@iconify/react";
 import StatsForNerdsOverlay from "./StatsForNerdsOverlay";
 
@@ -41,12 +42,13 @@ const PLYR_OPTIONS = {
  * Uses the vanilla Plyr library directly (not plyr-react) for maximum
  * control and to avoid React 18 strict-mode double-mount issues.
  */
-export default function VideoPlayer({ src, poster, videoId, subtitleTracks = [] }) {
+export default function VideoPlayer({ src, poster, videoId, ytaId, subtitleTracks = [] }) {
   const containerRef = useRef(null);
   const playerRef = useRef(null);
   const [videoEl, setVideoEl] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
   const [showStats, setShowStats] = useState(false);
+  const [isLooping, setIsLooping] = useState(false);
 
   useEffect(() => {
     if (!containerRef.current || !src) return;
@@ -106,6 +108,26 @@ export default function VideoPlayer({ src, poster, videoId, subtitleTracks = [] 
     setShowStats(!showStats);
     handleCloseContext();
   };
+
+  const handleToggleLoop = () => {
+    const next = !isLooping;
+    setIsLooping(next);
+    if (videoEl) videoEl.loop = next;
+    handleCloseContext();
+  };
+
+  const handleCopyYoutubeUrl = () => {
+    const ytUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    navigator.clipboard.writeText(ytUrl);
+    handleCloseContext();
+  };
+
+  const handleCopyArchiveUrl = () => {
+    navigator.clipboard.writeText(window.location.href);
+    handleCloseContext();
+  };
+
+  const menuItemSx = { fontSize: "0.85rem", minHeight: "auto", px: 2, "&:hover": { bgcolor: "rgba(255,255,255,0.1)" } };
 
   return (
     <Box
@@ -170,6 +192,7 @@ export default function VideoPlayer({ src, poster, videoId, subtitleTracks = [] 
           videoElement={videoEl}
           onClose={() => setShowStats(false)}
           videoId={videoId}
+          ytaId={ytaId}
         />
       )}
 
@@ -183,13 +206,33 @@ export default function VideoPlayer({ src, poster, videoId, subtitleTracks = [] 
             : undefined
         }
         PaperProps={{
-          sx: { bgcolor: "#272727", color: "#fff", borderRadius: 2 },
+          sx: { bgcolor: "#272727", color: "#fff", borderRadius: 2, minWidth: 200 },
         }}
         MenuListProps={{
           sx: { py: 0.5 }
         }}
       >
-        <MenuItem onClick={handleToggleStats} sx={{ fontSize: "0.85rem", minHeight: "auto", px: 2, "&:hover": { bgcolor: "rgba(255,255,255,0.1)" } }}>
+        <MenuItem onClick={handleToggleLoop} sx={menuItemSx}>
+          <ListItemIcon sx={{ color: "#fff", minWidth: 28 }}>
+            <Icon icon={isLooping ? "mdi:check" : "mdi:repeat"} width={18} />
+          </ListItemIcon>
+          <ListItemText primary={isLooping ? "Loop: On" : "Loop"} primaryTypographyProps={{ fontSize: "0.85rem", fontWeight: 500 }} />
+        </MenuItem>
+        <Divider sx={{ borderColor: "rgba(255,255,255,0.1)", my: 0.5 }} />
+        <MenuItem onClick={handleCopyYoutubeUrl} sx={menuItemSx}>
+          <ListItemIcon sx={{ color: "#fff", minWidth: 28 }}>
+            <Icon icon="mdi:youtube" width={18} />
+          </ListItemIcon>
+          <ListItemText primary="Copy YouTube URL" primaryTypographyProps={{ fontSize: "0.85rem", fontWeight: 500 }} />
+        </MenuItem>
+        <MenuItem onClick={handleCopyArchiveUrl} sx={menuItemSx}>
+          <ListItemIcon sx={{ color: "#fff", minWidth: 28 }}>
+            <Icon icon="mdi:link-variant" width={18} />
+          </ListItemIcon>
+          <ListItemText primary="Copy archive URL" primaryTypographyProps={{ fontSize: "0.85rem", fontWeight: 500 }} />
+        </MenuItem>
+        <Divider sx={{ borderColor: "rgba(255,255,255,0.1)", my: 0.5 }} />
+        <MenuItem onClick={handleToggleStats} sx={menuItemSx}>
           <ListItemIcon sx={{ color: "#fff", minWidth: 28 }}>
             <Icon icon="mdi:chart-box-outline" width={18} />
           </ListItemIcon>
