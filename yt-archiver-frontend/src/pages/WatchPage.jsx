@@ -291,7 +291,7 @@ export default function WatchPage() {
               >
                 <DownloadOutlinedIcon fontSize="small" sx={{ color: "#f1f1f1" }} />
                 <Typography variant="body2" sx={{ color: "#f1f1f1", fontWeight: 600 }}>
-                  Download {video.file_size && `(${formatFileSize(video.file_size)})`}
+                  Export {video.file_size && `(${formatFileSize(video.file_size)})`}
                 </Typography>
               </Box>
 
