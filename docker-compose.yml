@@ -1,0 +1,23 @@
+services:
+  yt-archiver:
+    build: .
+    image: yt-archiver
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      YTA_DB_URL: mongodb://mongo:27017
+    volumes:
+      # Videos, logs and the generated config (data/config/production.yaml) live here.
+      - ./data:/app/runtime
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:

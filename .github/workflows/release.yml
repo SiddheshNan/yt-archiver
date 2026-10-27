@@ -1,0 +1,50 @@
+name: Release
+
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Writes the tag's version into the backend, UI and extension, and zips the extension into dist/.
+      - name: Set version
+        run: python3 scripts/build.py --version "$GITHUB_REF_NAME" --no-image
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Image tags
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          echo "TAGS=$image:${GITHUB_REF_NAME#v},$image:latest" >> "$GITHUB_ENV"
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.TAGS }}
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # Every release is a pre-release until 1.0. Re-running the workflow replaces the release's files.
+        run: |
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist/yt-archiver-extension.zip --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist/yt-archiver-extension.zip --title "YT Archiver $GITHUB_REF_NAME" --generate-notes --verify-tag --prerelease
+          fi

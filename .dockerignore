@@ -1,0 +1,14 @@
+.git
+.github
+.venv
+**/__pycache__
+**/node_modules
+ui/dist
+runtime
+data
+lib
+dist
+docs
+website
+extension
+assets

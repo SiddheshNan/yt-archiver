@@ -1,0 +1,45 @@
+name: Bug report
+description: Something doesn't work as it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Archive the video …
+        2. Open …
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant lines from runtime/logs/app.log (data/logs/app.log with Docker Compose). For a failed download, include the error shown for the video.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: YT Archiver version
+      description: Shown at /docs in the API page title, or the image tag you run.
+    validations:
+      required: true
+  - type: input
+    id: ytdlp
+    attributes:
+      label: yt-dlp version
+      description: Output of `yt-dlp --version`. Many download failures are fixed by updating yt-dlp.
+  - type: dropdown
+    id: install
+    attributes:
+      label: How you run it
+      options: [Docker Compose, docker run, From source]
+    validations:
+      required: true

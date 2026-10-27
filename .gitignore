@@ -1,0 +1,26 @@
+.DS_Store
+__pycache__/
+*.egg-info/
+.venv/
+.ruff_cache/
+.pytest_cache/
+/dist/
+/data/
+
+# The dev runtime: only its config is committed, the rest (videos, logs, cookies) is created locally.
+/runtime/*
+!/runtime/config/
+/runtime/config/*
+!/runtime/config/development.yaml
+!/runtime/config/production.yaml
+
+# Local yt-dlp and ffmpeg binaries, see docs.
+/lib/**/*
+!/lib/**/
+!/lib/**/.gitkeep
+
+ui/node_modules/
+ui/dist/
+website/node_modules/
+website/.vitepress/cache/
+website/.vitepress/dist/
